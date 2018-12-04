@@ -1,0 +1,12 @@
+__pycache__/
+logs/
+tmp.*
+.DS_Store
+*.DS_Store
+.vscode/
+glaucoma/
+segmentation/
+.idea/
+*.png
+*.txt
+*.pyc
