@@ -31,10 +31,6 @@ IMAGE_HEIGHT_ORIGIN = 2056
 IMAGE_WIDTH_ORIGIN = 2124
 
 NUM_CLASSES = 3  # black white grey
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 320
-NUM_EXAMPLES_PER_EPOCH_FOR_TEST = 80
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 1
-TEST_ITER = NUM_EXAMPLES_PER_EPOCH_FOR_TEST / BATCH_SIZE
 
 
 def msra_initializer(kl, dl):
@@ -46,7 +42,8 @@ def msra_initializer(kl, dl):
 
 
 def orthogonal_initializer(scale = 1.1):
-    ''' From Lasagne and Keras. Reference: Saxe et al., http://arxiv.org/abs/1312.6120
+    '''
+    From Lasagne and Keras. Reference: Saxe et al., http://arxiv.org/abs/1312.6120
     '''
     def _initializer(shape, dtype=tf.float32, partition_info=None):
       flat_shape = (shape[0], np.prod(shape[1:]))
@@ -142,7 +139,7 @@ def dice_coe(output, target, loss_type='sorensen', axis=(1, 2, 3), smooth=1e-5):
     return dice
 
 
-def dice_loss(logits, labels, num_classes, head=None):
+def dice_loss(logits, labels, num_classes):
     """ median-frequency re-weighting """
     with tf.name_scope('loss'):
 
@@ -158,25 +155,31 @@ def dice_loss(logits, labels, num_classes, head=None):
 
         softmax = tf.nn.softmax(logits)
 
-        loss = tf.Variable([0.0])
+        loss = tf.Variable(0.0)
         for i in range(num_classes):
-            loss.assign_add(dice_coe(softmax[:, i], labels[:, i]))
+            loss.assign_add(1-dice_coe(softmax[:, i], labels[:, i]))
 
         dice_loss_mean = tf.reduce_mean(loss, name='dice_coe')
         tf.add_to_collection('losses', dice_loss_mean)
 
+        tmp = tf.get_collection('losses')
         loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
 
     return loss
 
 
 def cal_loss(logits, labels):
-    loss_weight = np.array([7.3, 2.6, 0.03])  # class 0~2 TODO TUNE
-
     labels = tf.cast(labels, tf.int32)
+
+    # normal cross entropy loss function without reweighting
     # return loss(logits, labels)
+
+    # reweighting cross entropy loss
+    loss_weight = np.array([7.3, 2.6, 0.03])  # class 0~2 TODO TUNE
     # return weighted_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
-    return dice_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
+
+    # dice loss
+    return dice_loss(logits, labels, num_classes=NUM_CLASSES)
 
 
 def conv_layer_with_bn(inputT, shape, train_phase, activation=True, name=None):

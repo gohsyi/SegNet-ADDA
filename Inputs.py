@@ -8,6 +8,17 @@ import skimage
 import skimage.io
 
 
+BATCH_SIZE = 5
+
+IMAGE_HEIGHT = 240
+IMAGE_WIDTH = 240
+IMAGE_DEPTH = 3
+
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 320
+NUM_EXAMPLES_PER_EPOCH_FOR_TEST = 80
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 1
+TEST_ITER = NUM_EXAMPLES_PER_EPOCH_FOR_TEST / BATCH_SIZE
+
 def _generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle):
     """Construct a queued batch of images and labels.
 
