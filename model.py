@@ -175,8 +175,8 @@ def cal_loss(logits, labels):
     # return loss(logits, labels)
 
     # reweighting cross entropy loss
-    loss_weight = np.array([7.3, 2.6, 0.03])  # class 0~2 TODO TUNE
-    # return weighted_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
+    loss_weight = np.array([1.0, 1.0, 1.0])  # class 0~2 TODO TUNE
+    return weighted_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
 
     # dice loss
     return dice_loss(logits, labels, num_classes=NUM_CLASSES)
@@ -422,7 +422,7 @@ def test(FLAGS):
         print("mean IU: ", np.nanmean(iu))
 
 
-def training(FLAGS, is_finetune=False):
+def training(FLAGS, loss, weight, image_height, image_width, is_finetune=False):
     max_steps = FLAGS.max_steps
     batch_size = FLAGS.batch_size
     train_dir = FLAGS.log_dir

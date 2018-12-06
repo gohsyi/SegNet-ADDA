@@ -3,8 +3,6 @@ import model
 import os
 from preprocess import preprocess
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('preprocess', 'nothing', 
@@ -13,6 +11,9 @@ nothing: nothing
 txt: only generate train.txt,test.txt,val.txt
 all: generate txt and preprocess images 
 """)
+tf.app.flags.DEFINE_integer('gpu', '-1', """ which gpu device """)
+tf.app.flags.DEFINE_string('loss', 'weighted', """ cross_entropy/weighted/dice """)
+tf.app.flags.DEFINE_string('weight', '1,1,1', """ weight in cross_entropy  """)
 tf.app.flags.DEFINE_string('testing', '', """ checkpoint file """)
 tf.app.flags.DEFINE_string('finetune', '', """ finetune checkpoint file """)
 tf.app.flags.DEFINE_integer('batch_size', "5", """ batch_size """)
@@ -45,13 +46,26 @@ def checkArgs():
         print("CamVid Image dir: %s"%FLAGS.image_dir)
         print("CamVid Val dir: %s"%FLAGS.val_dir)
 
-    print("Batch Size: %d"%FLAGS.batch_size)
-    print("Log dir: %s"%FLAGS.log_dir)
+    if FLAGS.loss != 'cross_entropy' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
+        print("loss function not implemented")
+        raise ValueError
+
+    if FLAGS.loss == 'weighted' and len(FLAGS.weight.split(',')) != FLAGS.num_class:
+        print("a valid weight not given")
+        raise ValueError
+
+    print("GPU Device: %d" % FLAGS.gpu)
+    print("Batch Size: %d" % FLAGS.batch_size)
+    print("Log Dir: %s" % FLAGS.log_dir)
     print("Preprocess: %s" % FLAGS.preprocess)
+    print("Loss Function: %s" % FLAGS.loss)
+    print("Loss Weight: %s" % str(FLAGS.weight.split(',')))
 
 
 def main(args):
     checkArgs()
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
+    
     if FLAGS.preprocess != 'nothing':
         print("Start processing")
         preprocess(data_folder='./glaucoma/Training400/Training400/',
@@ -62,10 +76,10 @@ def main(args):
     if FLAGS.testing:
         model.test(FLAGS)
     elif FLAGS.finetune:
-        model.training(FLAGS, is_finetune=True)
+        model.training(FLAGS, loss=FLAGS.loss, weight=FLAGS.weight, image_height=FLAGS.image_h, image_width=FLAGS.image_w, is_finetune=True)
     else:
-        model.training(FLAGS, is_finetune=False)
+        model.training(FLAGS, loss=FLAGS.loss, weight=FLAGS.weight, image_height=FLAGS.image_h, image_width=FLAGS.image_w, is_finetune=False)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()
