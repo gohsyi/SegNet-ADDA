@@ -11,8 +11,8 @@ nothing: nothing
 txt: only generate train.txt,test.txt,val.txt
 all: generate txt and preprocess images 
 """)
-tf.app.flags.DEFINE_integer('gpu', '-1', """ which gpu device """)
-tf.app.flags.DEFINE_string('loss', 'weighted', """ cross_entropy/weighted/dice """)
+tf.app.flags.DEFINE_integer('gpu', -1, """ which gpu device """)
+tf.app.flags.DEFINE_string('loss', 'dice', """ normal/weighted/dice """)
 tf.app.flags.DEFINE_string('weight', '1,1,1', """ weight in cross_entropy  """)
 tf.app.flags.DEFINE_string('testing', '', """ checkpoint file """)
 tf.app.flags.DEFINE_string('finetune', '', """ finetune checkpoint file """)
@@ -46,7 +46,7 @@ def checkArgs():
         print("CamVid Image dir: %s"%FLAGS.image_dir)
         print("CamVid Val dir: %s"%FLAGS.val_dir)
 
-    if FLAGS.loss != 'cross_entropy' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
+    if FLAGS.loss != 'normal' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
         print("loss function not implemented")
         raise ValueError
 
@@ -76,9 +76,9 @@ def main(args):
     if FLAGS.testing:
         model.test(FLAGS)
     elif FLAGS.finetune:
-        model.training(FLAGS, loss=FLAGS.loss, weight=FLAGS.weight, image_height=FLAGS.image_h, image_width=FLAGS.image_w, is_finetune=True)
+        model.training(FLAGS, is_finetune=True)
     else:
-        model.training(FLAGS, loss=FLAGS.loss, weight=FLAGS.weight, image_height=FLAGS.image_h, image_width=FLAGS.image_w, is_finetune=False)
+        model.training(FLAGS, is_finetune=False)
 
 
 if __name__ == '__main__':

@@ -43,33 +43,35 @@ def msra_initializer(kl, dl):
 
 def orthogonal_initializer(scale = 1.1):
     '''
-    From Lasagne and Keras. Reference: Saxe et al., http://arxiv.org/abs/1312.6120
-    '''
+     From Lasagne and Keras. Reference: Saxe et al., http://arxiv.org/abs/1312.6120
+     '''
+
     def _initializer(shape, dtype=tf.float32, partition_info=None):
-      flat_shape = (shape[0], np.prod(shape[1:]))
-      a = np.random.normal(0.0, 1.0, flat_shape)
-      u, _, v = np.linalg.svd(a, full_matrices=False)
-      # pick the one with the correct shape
-      q = u if u.shape == flat_shape else v
-      q = q.reshape(shape) #this needs to be corrected to float32
-      return tf.constant(scale * q[:shape[0], :shape[1]], dtype=tf.float32)
+        flat_shape = (shape[0], np.prod(shape[1:]))
+        a = np.random.normal(0.0, 1.0, flat_shape)
+        u, _, v = np.linalg.svd(a, full_matrices=False)
+        # pick the one with the correct shape
+        q = u if u.shape == flat_shape else v
+        q = q.reshape(shape)  # this needs to be corrected to float32
+        return tf.constant(scale * q[:shape[0], :shape[1]], dtype=tf.float32)
+
     return _initializer
 
 
 def loss(logits, labels):
-  """
-      loss func without re-weighting
-  """
-  # Calculate the average cross entropy loss across the batch.
-  logits = tf.reshape(logits, (-1,NUM_CLASSES))
-  labels = tf.reshape(labels, [-1])
+    """
+        loss func without re-weighting
+    """
+    # Calculate the average cross entropy loss across the batch.
+    logits = tf.reshape(logits, (-1, NUM_CLASSES))
+    labels = tf.reshape(labels, [-1])
 
-  cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      logits=logits, labels=labels, name='cross_entropy_per_example')
-  cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
-  tf.add_to_collection('losses', cross_entropy_mean)
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits=logits, labels=labels, name='cross_entropy_per_example')
+    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+    tf.add_to_collection('losses', cross_entropy_mean)
 
-  return tf.add_n(tf.get_collection('losses'), name='total_loss')
+    return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
 def weighted_loss(logits, labels, num_classes, head=None):
@@ -97,7 +99,7 @@ def weighted_loss(logits, labels, num_classes, head=None):
     return loss
 
 
-def dice_coe(output, target, loss_type='sorensen', axis=(1, 2, 3), smooth=1e-5):
+def dice_coe(output, target, axis=0, loss_type='jaccard', smooth=1e-5):
     """ Soft dice (Sørensen or Jaccard) coefficient for comparing the similarity
     of two batch of data, usually be used for binary image segmentation
     i.e. labels are binary. The coefficient between 0 to 1, 1 means totally match.
@@ -108,10 +110,10 @@ def dice_coe(output, target, loss_type='sorensen', axis=(1, 2, 3), smooth=1e-5):
         A distribution with shape: [batch_size, ....], (any dimensions).
     target : Tensor
         The target distribution, format the same with `output`.
+    axis : tuple of int
+        All dimensions are reduced, default ``[0]``.
     loss_type : str
         ``jaccard`` or ``sorensen``, default is ``jaccard``.
-    axis : tuple of int
-        All dimensions are reduced, default ``[1,2,3]``.
     smooth : float
         This small value will be added to the numerator and denominator.
             - If both output and target are empty, it makes sure dice is 1.
@@ -122,27 +124,31 @@ def dice_coe(output, target, loss_type='sorensen', axis=(1, 2, 3), smooth=1e-5):
 
     References
     -----------
-    - `Wiki-Dice <https://en.wikipedia.org/wiki/Sørensen–Dice_coefficient>`__
+    - `Wiki-Dice <https://en.wikipedia.org/wiki/Sørensen–Dice_coefficient>
     """
+    output = tf.Print(output, [output], "output is ", summarize=100)
+    target = tf.Print(target, [target], "target is ", summarize=100)
+
     iou = output * target
-    inse = tf.reduce_sum(iou)
+    inse = tf.reduce_sum(iou, axis=axis)
     if loss_type == 'jaccard':
-        l = tf.reduce_sum(output * output)
-        r = tf.reduce_sum(target * target)
+        l = tf.reduce_sum(output * output, axis=axis)
+        r = tf.reduce_sum(target * target, axis=axis)
     elif loss_type == 'sorensen':
-        l = tf.reduce_sum(output)
-        r = tf.reduce_sum(target)
+        l = tf.reduce_sum(output, axis=axis)
+        r = tf.reduce_sum(target, axis=axis)
     else:
         raise Exception("Unknow loss_type")
+    inse = tf.Print(inse, [inse], "inse is ")
+    # l = tf.Print(l, [l], "l is ")
+    # r = tf.Print(r, [r], "r is ")
     dice = (2. * inse + smooth) / (l + r + smooth)
     dice = tf.reduce_mean(dice)
     return dice
 
 
 def dice_loss(logits, labels, num_classes):
-    """ median-frequency re-weighting """
     with tf.name_scope('loss'):
-
         logits = tf.reshape(logits, (-1, num_classes))
         epsilon = tf.constant(value=1e-10)
         logits = logits + epsilon
@@ -155,31 +161,29 @@ def dice_loss(logits, labels, num_classes):
 
         softmax = tf.nn.softmax(logits)
 
-        loss = tf.Variable(0.0)
-        for i in range(num_classes):
-            loss.assign_add(1-dice_coe(softmax[:, i], labels[:, i]))
+        loss = 1 - dice_coe(softmax, labels)
+        # loss = tf.Print(loss, [loss], "dice loss is ")
 
-        dice_loss_mean = tf.reduce_mean(loss, name='dice_coe')
-        tf.add_to_collection('losses', dice_loss_mean)
-
-        tmp = tf.get_collection('losses')
+        tf.add_to_collection('losses', loss)
         loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+        loss = tf.Print(loss, [loss], "loss is ")
 
     return loss
 
 
-def cal_loss(logits, labels):
+def cal_loss(logits, labels, loss_func='dice'):
     labels = tf.cast(labels, tf.int32)
 
-    # normal cross entropy loss function without reweighting
-    # return loss(logits, labels)
-
-    # reweighting cross entropy loss
-    loss_weight = np.array([1.0, 1.0, 1.0])  # class 0~2 TODO TUNE
-    return weighted_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
-
-    # dice loss
-    return dice_loss(logits, labels, num_classes=NUM_CLASSES)
+    if loss_func == 'normal':
+        # normal cross entropy loss function without reweighting
+        return loss(logits, labels)
+    elif loss_func == 'weighted':
+        # reweighting cross entropy loss
+        loss_weight = np.array([1.0, 1.0, 1.0])  # class 0~2
+        return weighted_loss(logits, labels, num_classes=NUM_CLASSES, head=loss_weight)
+    elif loss_func == 'dice':
+        # loss is one minus dice coefficient
+        return dice_loss(logits, labels, num_classes=NUM_CLASSES)
 
 
 def conv_layer_with_bn(inputT, shape, train_phase, activation=True, name=None):
@@ -215,10 +219,8 @@ def get_deconv_filter(f_shape):
     for i in range(f_shape[2]):
         weights[:, :, i, i] = bilinear
 
-    init = tf.constant_initializer(value=weights,
-                                   dtype=tf.float32)
-    return tf.get_variable(name="up_filter", initializer=init,
-                           shape=weights.shape)
+    init = tf.constant_initializer(value=weights, dtype=tf.float32)
+    return tf.get_variable(name="up_filter", initializer=init, shape=weights.shape)
 
 
 def deconv_layer(inputT, f_shape, output_shape, stride=2, name=None):
@@ -228,8 +230,7 @@ def deconv_layer(inputT, f_shape, output_shape, stride=2, name=None):
     strides = [1, stride, stride, 1]
     with tf.variable_scope(name):
         weights = get_deconv_filter(f_shape)
-        deconv = tf.nn.conv2d_transpose(inputT, weights, output_shape,
-                                        strides=strides, padding='SAME')
+        deconv = tf.nn.conv2d_transpose(inputT, weights, output_shape, strides=strides, padding='SAME')
     return deconv
 
 
@@ -241,7 +242,7 @@ def batch_norm_layer(inputT, is_training, scope):
                                                         updates_collections=None, center=False, scope=scope+"_bn", reuse = True))
 
 
-def inference(images, labels, batch_size, phase_train):
+def inference(images, labels, batch_size, phase_train, loss_func):
     # norm1
     norm1 = tf.nn.lrn(images, depth_radius=5, bias=1.0, alpha=0.0001, beta=0.75, name='norm1')
     # conv1
@@ -307,7 +308,7 @@ def inference(images, labels, batch_size, phase_train):
         conv_classifier = tf.nn.bias_add(conv, biases, name=scope.name)
 
     logit = conv_classifier
-    loss = cal_loss(conv_classifier, labels)
+    loss = cal_loss(conv_classifier, labels, loss_func)
 
     return loss, logit
 
@@ -422,7 +423,7 @@ def test(FLAGS):
         print("mean IU: ", np.nanmean(iu))
 
 
-def training(FLAGS, loss, weight, image_height, image_width, is_finetune=False):
+def training(FLAGS, is_finetune=False):
     max_steps = FLAGS.max_steps
     batch_size = FLAGS.batch_size
     train_dir = FLAGS.log_dir
@@ -455,7 +456,7 @@ def training(FLAGS, loss, weight, image_height, image_width, is_finetune=False):
         val_images, val_labels = CamVidInputs(val_image_filenames, val_label_filenames, batch_size)
 
         # Build a Graph that computes the logits predictions from the inference model.
-        loss, eval_prediction = inference(train_data_node, train_labels_node, batch_size, phase_train)
+        loss, eval_prediction = inference(train_data_node, train_labels_node, batch_size, phase_train, FLAGS.loss)
 
         # Build a Graph that trains the model with one batch of examples and updates the model parameters.
         train_op = train(loss, global_step)
@@ -497,6 +498,7 @@ def training(FLAGS, loss, weight, image_height, image_width, is_finetune=False):
                 }
                 start_time = time.time()
 
+                # _, loss_value, _l, _r, _inse = sess.run([train_op, loss], feed_dict=feed_dict)
                 _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
                 duration = time.time() - start_time
 
