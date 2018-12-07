@@ -346,7 +346,7 @@ def train(total_loss, global_step):
     with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
         train_op = tf.no_op(name='train')
 
-    return train_op
+    return train_op, opt._lr
 
 
 def test(FLAGS):
@@ -459,7 +459,7 @@ def training(FLAGS, is_finetune=False):
         loss, eval_prediction = inference(train_data_node, train_labels_node, batch_size, phase_train, FLAGS.loss)
 
         # Build a Graph that trains the model with one batch of examples and updates the model parameters.
-        train_op = train(loss, global_step)
+        train_op, lr = train(loss, global_step)
 
         saver = tf.train.Saver(tf.global_variables())
 
@@ -499,8 +499,10 @@ def training(FLAGS, is_finetune=False):
                 start_time = time.time()
 
                 # _, loss_value, _l, _r, _inse = sess.run([train_op, loss], feed_dict=feed_dict)
-                _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
+                _, loss_value, cur_lr = sess.run([train_op, loss, lr], feed_dict=feed_dict)
                 duration = time.time() - start_time
+
+                print('current learning rate is {}'.format(cur_lr))
 
                 assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
