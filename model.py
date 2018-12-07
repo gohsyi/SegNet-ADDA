@@ -126,8 +126,8 @@ def dice_coe(output, target, axis=0, loss_type='jaccard', smooth=1e-5):
     -----------
     - `Wiki-Dice <https://en.wikipedia.org/wiki/Sørensen–Dice_coefficient>
     """
-    output = tf.Print(output, [output], "output is ", summarize=100)
-    target = tf.Print(target, [target], "target is ", summarize=100)
+    # output = tf.Print(output, [output], "output is ", summarize=100)
+    # target = tf.Print(target, [target], "target is ", summarize=100)
 
     iou = output * target
     inse = tf.reduce_sum(iou, axis=axis)
@@ -139,7 +139,7 @@ def dice_coe(output, target, axis=0, loss_type='jaccard', smooth=1e-5):
         r = tf.reduce_sum(target, axis=axis)
     else:
         raise Exception("Unknow loss_type")
-    inse = tf.Print(inse, [inse], "inse is ")
+    # inse = tf.Print(inse, [inse], "inse is ")
     # l = tf.Print(l, [l], "l is ")
     # r = tf.Print(r, [r], "r is ")
     dice = (2. * inse + smooth) / (l + r + smooth)
@@ -166,7 +166,7 @@ def dice_loss(logits, labels, num_classes):
 
         tf.add_to_collection('losses', loss)
         loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-        loss = tf.Print(loss, [loss], "loss is ")
+        # loss = tf.Print(loss, [loss], "loss is ")
 
     return loss
 
