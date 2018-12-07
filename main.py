@@ -14,7 +14,6 @@ all: generate txt and preprocess images
 tf.app.flags.DEFINE_integer('gpu', -1, """ which gpu device """)
 tf.app.flags.DEFINE_string('note', '0', """ note of the experiment """)
 tf.app.flags.DEFINE_string('loss', 'dice', """ normal/weighted/dice """)
-tf.app.flags.DEFINE_string('weight', '1,1,1', """ weight in cross_entropy  """)
 tf.app.flags.DEFINE_string('testing', '', """ checkpoint file """)
 tf.app.flags.DEFINE_string('finetune', '', """ finetune checkpoint file """)
 tf.app.flags.DEFINE_integer('batch_size', "5", """ batch_size """)
@@ -49,10 +48,6 @@ def checkArgs():
 
     if FLAGS.loss != 'normal' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
         print("loss function not implemented")
-        raise ValueError
-
-    if FLAGS.loss == 'weighted' and len(FLAGS.weight.split(',')) != FLAGS.num_class:
-        print("a valid weighted not given")
         raise ValueError
 
     print("GPU Device: %d" % FLAGS.gpu)
