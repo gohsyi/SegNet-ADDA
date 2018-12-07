@@ -1,15 +1,11 @@
+import os
 import tensorflow as tf
-from tensorflow.python.framework import ops
-from tensorflow.python.framework import dtypes
-
-import os, sys
-import numpy as np
-import math
-from datetime import datetime
 import time
+from datetime import datetime
 from PIL import Image
 from math import ceil
-from tensorflow.python.ops import gen_nn_ops
+from OUTPUT import Output
+
 # modules
 from Utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, _activation_summary, print_hist_summery, get_hist, per_class_acc
 from Inputs import *
@@ -426,13 +422,14 @@ def test(FLAGS):
 def training(FLAGS, is_finetune=False):
     max_steps = FLAGS.max_steps
     batch_size = FLAGS.batch_size
-    train_dir = FLAGS.log_dir
+    log_dir = FLAGS.log_dir + FLAGS.note + '/'
     image_dir = FLAGS.image_dir
     val_dir = FLAGS.val_dir
     finetune_ckpt = FLAGS.finetune
     image_w = FLAGS.image_w
     image_h = FLAGS.image_h
     image_c = FLAGS.image_c
+    output = Output(output_path=FLAGS.log_dir, note=FLAGS.note)
 
     # should be changed if your model stored by different convention
     startstep = 0 if not is_finetune else int(FLAGS.finetune.split('-')[-1])
@@ -480,7 +477,7 @@ def training(FLAGS, is_finetune=False):
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
             # Summery placeholders
-            summary_writer = tf.summary.FileWriter(train_dir, sess.graph)
+            summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
             average_pl = tf.placeholder(tf.float32)
             acc_pl = tf.placeholder(tf.float32)
             iu_pl = tf.placeholder(tf.float32)
@@ -502,7 +499,7 @@ def training(FLAGS, is_finetune=False):
                 _, loss_value, cur_lr = sess.run([train_op, loss, lr], feed_dict=feed_dict)
                 duration = time.time() - start_time
 
-                print('current learning rate is {}'.format(cur_lr))
+                output.debug_write('current learning rate is {}'.format(cur_lr))
 
                 assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
@@ -512,12 +509,12 @@ def training(FLAGS, is_finetune=False):
                     sec_per_batch = float(duration)
 
                     format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f sec/batch)')
-                    print(format_str % (datetime.now(), step, loss_value,
-                                        examples_per_sec, sec_per_batch))
+                    # print(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
+                    output.write(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
 
                     # eval current training batch pre-class accuracy
                     pred = sess.run(eval_prediction, feed_dict=feed_dict)
-                    per_class_acc(pred, label_batch)
+                    per_class_acc(output, pred, label_batch)
 
                 if step % 100 == 0:
                     print("start validating.....")
@@ -549,10 +546,8 @@ def training(FLAGS, is_finetune=False):
                     summary_writer.add_summary(iu_summary_str, step)
                 # Save the model checkpoint periodically.
                 if step % 1000 == 0 or (step + 1) == max_steps + startstep:
-                    checkpoint_path = os.path.join(train_dir, 'model.ckpt')
+                    checkpoint_path = os.path.join(log_dir, 'model.ckpt')
                     saver.save(sess, checkpoint_path, global_step=step)
 
             coord.request_stop()
             coord.join(threads)
-
-    tf.summary.FileWriter("logs", tf.get_default_graph()).close()

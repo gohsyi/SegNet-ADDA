@@ -66,16 +66,16 @@ def _variable_on_cpu(name, shape, initializer):
 
 
 def _variable_with_weight_decay(name, shape, initializer, wd):
-    """Helper to create an initialized Variable with weight decay.
+    """Helper to create an initialized Variable with weighted decay.
 
       Note that the Variable is initialized with a truncated normal distribution.
-      A weight decay is added only if one is specified.
+      A weighted decay is added only if one is specified.
 
       Args:
         name: name of the variable
         shape: list of ints
         stddev: standard deviation of a truncated Gaussian
-        wd: add L2Loss weight decay multiplied by this float. If None, weight
+        wd: add L2Loss weighted decay multiplied by this float. If None, weighted
             decay is not added for this Variable.
 
       Returns:
@@ -118,23 +118,30 @@ def print_hist_summery(hist):
         print("    class # %d accuracy = %f " % (ii, acc))
 
 
-def per_class_acc(predictions, label_tensor):
+def per_class_acc(output, predictions, label_tensor):
     labels = label_tensor
     size = predictions.shape[0]
     num_class = predictions.shape[3]
     hist = np.zeros((num_class, num_class))
     for i in range(size):
-      hist += fast_hist(labels[i].flatten(), predictions[i].argmax(2).flatten(), num_class)
+        hist += fast_hist(labels[i].flatten(), predictions[i].argmax(2).flatten(), num_class)
     acc_total = np.diag(hist).sum() / hist.sum()
-    print ('accuracy = %f'%np.nanmean(acc_total))
+
+    # print ('accuracy = %f'%np.nanmean(acc_total))
+    output.write('accuracy = %f' % np.nanmean(acc_total))
+
     iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
-    print ('mean IU  = %f'%np.nanmean(iu))
+
+    # print ('mean IU  = %f'%np.nanmean(iu))
+    output.write('mean IU  = %f' % np.nanmean(iu))
+
     for ii in range(num_class):
         if float(hist.sum(1)[ii]) == 0:
-          acc = 0.0
+            acc = 0.0
         else:
-          acc = np.diag(hist)[ii] / float(hist.sum(1)[ii])
-        print("    class # %d accuracy = %f "%(ii,acc))
+            acc = np.diag(hist)[ii] / float(hist.sum(1)[ii])
+        # print("    class # %d accuracy = %f " % (ii, acc))
+        output.write("    class # %d accuracy = %f " % (ii, acc))
 
 
 """ transfer learning DANN part """
@@ -214,7 +221,7 @@ def plot_embedding(X, y, d, title=None):
         # plot colored number
         plt.text(X[i, 0], X[i, 1], str(y[i]),
                  color=plt.cm.bwr(d[i] / 1.),
-                 fontdict={'weight': 'bold', 'size': 9})
+                 fontdict={'weighted': 'bold', 'size': 9})
 
     plt.xticks([]), plt.yticks([])
     if title is not None:
