@@ -29,6 +29,7 @@ tf.app.flags.DEFINE_integer('image_c', "3", """ image channel (RGB) """)
 tf.app.flags.DEFINE_integer('num_class', "3", """ total class number """)
 tf.app.flags.DEFINE_boolean('save_image', True, """ whether to save predicted image """)
 
+
 def checkArgs():
     if FLAGS.testing != '':
         print('The model is set to Testing')
@@ -55,7 +56,6 @@ def checkArgs():
     print("Log Dir: %s" % FLAGS.log_dir)
     print("Preprocess: %s" % FLAGS.preprocess)
     print("Loss Function: %s" % FLAGS.loss)
-    print("Loss Weight: %s" % str(FLAGS.weight.split(',')))
 
 
 def main(args):

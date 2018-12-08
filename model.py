@@ -10,6 +10,9 @@ from OUTPUT import Output
 from Utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, _activation_summary, print_hist_summery, get_hist, per_class_acc
 from Inputs import *
 
+from loss_functions import loss, weighted_loss, dice_loss
+
+
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
@@ -55,7 +58,6 @@ def orthogonal_initializer(scale = 1.1):
 
 
 def cal_loss(logits, labels, loss_func='dice'):
-    from loss_functions import loss, weighted_loss, dice_loss
     labels = tf.cast(labels, tf.int32)
 
     if loss_func == 'normal':
@@ -179,9 +181,10 @@ def inference(images, labels, batch_size, phase_train, loss_func):
     upsample1 = deconv_layer(conv_decode2, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT, IMAGE_WIDTH, 64], 2, "up1")
     # decode4
     conv_decode1 = conv_layer_with_bn(upsample1, [7, 7, 64, 64], phase_train, False, name="conv_decode1")
+
     """ end of Decode """
     """ Start Classify """
-    # output predicted class number (6)
+    # output predicted class number
     with tf.variable_scope('conv_classifier') as scope:
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 64, NUM_CLASSES],

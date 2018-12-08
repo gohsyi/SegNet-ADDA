@@ -1,9 +1,8 @@
 import tensorflow as tf
 
+
 def loss(logits, labels, num_classes):
-    """
-        normal loss func without re-weighting
-    """
+    """ normal loss func without re-weighting """
     # Calculate the average cross entropy loss across the batch.
     logits = tf.reshape(logits, (-1, num_classes))
     labels = tf.reshape(labels, [-1])
