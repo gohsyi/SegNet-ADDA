@@ -1,6 +1,8 @@
 import tensorflow as tf
 
 
+""" loss functions for SegNet """
+
 def loss(logits, labels, num_classes):
     """ normal loss func without re-weighting """
     # Calculate the average cross entropy loss across the batch.
@@ -110,3 +112,35 @@ def dice_loss(logits, labels, num_classes):
         # loss = tf.Print(loss, [loss], "loss is ")
 
     return loss
+
+
+""" loss functions for ADDA """
+
+def build_classify_loss(self, logits, labels):
+    c_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+    c_loss = tf.reduce_mean(c_loss)
+    return c_loss
+
+
+def build_w_loss(self, disc_s, disc_t):
+    d_loss = -tf.reduce_mean(disc_s) + tf.reduce_mean(disc_t)
+    g_loss = -tf.reduce_mean(disc_t)
+    tf.summary.scalar("g_loss", g_loss)
+    tf.summary.scalar('d_loss', d_loss)
+    return g_loss, d_loss
+
+
+def build_ad_loss(self, disc_s, disc_t):
+    g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_t, labels=tf.ones_like(disc_t))
+    g_loss = tf.reduce_mean(g_loss)
+    d_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_s, labels=tf.ones_like(disc_s))) + \
+             tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_t, labels=tf.zeros_like(disc_t)))
+    tf.summary.scalar("g_loss", g_loss)
+    tf.summary.scalar('d_loss', d_loss)
+    return g_loss, d_loss
+
+
+def build_ad_loss_v2(self, disc_s, disc_t):
+    d_loss = -tf.reduce_mean(tf.log(disc_s + 1e-12) + tf.log(1 - disc_t + 1e-12))
+    g_loss = -tf.reduce_mean(tf.log(disc_t + 1e-12))
+    return g_loss, d_loss

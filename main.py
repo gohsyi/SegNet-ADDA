@@ -19,9 +19,9 @@ tf.app.flags.DEFINE_string('finetune', '', """ finetune checkpoint file """)
 tf.app.flags.DEFINE_integer('batch_size', "5", """ batch_size """)
 tf.app.flags.DEFINE_float('learning_rate', "1e-3", """ initial lr """)
 tf.app.flags.DEFINE_string('log_dir', "logs/", """ dir to store ckpt """)
-tf.app.flags.DEFINE_string('image_dir', "train.txt", """ path to CamVid image """)
-tf.app.flags.DEFINE_string('test_dir', "test.txt", """ path to CamVid test image """)
-tf.app.flags.DEFINE_string('val_dir', "val.txt", """ path to CamVid val image """)
+tf.app.flags.DEFINE_string('data_dir', "./glaucoma/Training400/Training400/", """ path to CamVid image """)
+tf.app.flags.DEFINE_string('gt_dir', "./glaucoma/Disc_Cup_Masks/", """ path to CamVid test image """)
+tf.app.flags.DEFINE_string('val_dir', "./glaucoma/Validation400/", """ path to CamVid val image """)
 tf.app.flags.DEFINE_integer('max_steps', "0", """ max_steps """)
 tf.app.flags.DEFINE_integer('image_h', "240", """ image height """)
 tf.app.flags.DEFINE_integer('image_w', "240", """ image width """)
@@ -64,9 +64,9 @@ def main(args):
     
     if FLAGS.preprocess != 'nothing':
         print("Start processing")
-        preprocess(data_folder='./glaucoma/Training400/Training400/',
-                    label_folder='./glaucoma/Disc_Cup_Masks/',
-                    test_folder='./glaucoma/Validation400/',
+        preprocess(data_folder=FLAGS.data_dir,
+                    label_folder=FLAGS.gt_dir,
+                    test_folder=FLAGS.val_dir,
                     ALREADY_HAVE_PNG=(False if FLAGS.preprocess == 'all' else True))
 
     if FLAGS.testing:

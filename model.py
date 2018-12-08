@@ -7,7 +7,7 @@ from math import ceil
 from OUTPUT import Output
 
 # modules
-from Utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, _activation_summary, print_hist_summery, get_hist, per_class_acc
+from Utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, print_hist_summery, get_hist, per_class_acc
 from Inputs import *
 
 from loss_functions import loss, weighted_loss, dice_loss
@@ -128,76 +128,60 @@ def batch_norm_layer(inputT, is_training, scope):
                                                         updates_collections=None, center=False, scope=scope+"_bn", reuse = True))
 
 
-def inference(images, labels, batch_size, phase_train, loss_func):
-    # norm1
-    norm1 = tf.nn.lrn(images, depth_radius=5, bias=1.0, alpha=0.0001, beta=0.75, name='norm1')
-    # conv1
-    conv1 = conv_layer_with_bn(norm1, [7, 7, images.get_shape().as_list()[3], 64], phase_train, name="conv1")
-    # pool1
+def encoder(input, batch_size, phase_train):
+    """ down sample """
+
+    norm1 = tf.nn.lrn(input=input, depth_radius=5, bias=1.0, alpha=0.0001, beta=0.75, name='norm1')
+
+    conv1 = conv_layer_with_bn(norm1, [7, 7, input.get_shape().as_list()[3], 64], phase_train, name="conv1")
     pool1, pool1_indices = tf.nn.max_pool_with_argmax(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
                                                       padding='SAME', name='pool1')
-    # conv2
     conv2 = conv_layer_with_bn(pool1, [7, 7, 64, 64], phase_train, name="conv2")
-
-    # pool2
-    pool2, pool2_indices = tf.nn.max_pool_with_argmax(conv2, ksize=[1, 2, 2, 1],
-                                                      strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-    # conv3
+    pool2, pool2_indices = tf.nn.max_pool_with_argmax(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
+                                                      padding='SAME', name='pool2')
     conv3 = conv_layer_with_bn(pool2, [7, 7, 64, 64], phase_train, name="conv3")
-
-    # pool3
-    pool3, pool3_indices = tf.nn.max_pool_with_argmax(conv3, ksize=[1, 2, 2, 1],
-                                                      strides=[1, 2, 2, 1], padding='SAME', name='pool3')
-    # conv4
+    pool3, pool3_indices = tf.nn.max_pool_with_argmax(conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
+                                                      padding='SAME', name='pool3')
     conv4 = conv_layer_with_bn(pool3, [7, 7, 64, 64], phase_train, name="conv4")
+    pool4, pool4_indices = tf.nn.max_pool_with_argmax(conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
+                                                      padding='SAME', name='pool4')
+    return pool4
 
-    # pool4
-    pool4, pool4_indices = tf.nn.max_pool_with_argmax(conv4, ksize=[1, 2, 2, 1],
-                                                      strides=[1, 2, 2, 1], padding='SAME', name='pool4')
 
-    """ End of encoder """
-    """ start upsample """
-    # upsample4
-    # Need to change when using different dataset out_w, out_h
-    # upsample4 = upsample_with_pool_indices(pool4, pool4_indices, pool4.get_shape(), out_w=45, out_h=60, scale=2, name='upsample4')
-    upsample4 = deconv_layer(pool4, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT//8, IMAGE_WIDTH//8, 64], 2, "up4")
-    # decode 4
+def decoder(input, batch_size, phase_train):
+    """ up sample """
+
+    upsample4 = deconv_layer(input, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT // 8, IMAGE_WIDTH // 8, 64], 2, "up4")
     conv_decode4 = conv_layer_with_bn(upsample4, [7, 7, 64, 64], phase_train, False, name="conv_decode4")
 
-    # upsample 3
-    # upsample3 = upsample_with_pool_indices(conv_decode4, pool3_indices, conv_decode4.get_shape(), scale=2, name='upsample3')
-    upsample3 = deconv_layer(conv_decode4, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT//4, IMAGE_WIDTH//4, 64], 2, "up3")
-    # decode 3
+    upsample3 = deconv_layer(conv_decode4, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT // 4, IMAGE_WIDTH // 4, 64], 2, "up3")
     conv_decode3 = conv_layer_with_bn(upsample3, [7, 7, 64, 64], phase_train, False, name="conv_decode3")
 
-    # upsample2
-    # upsample2 = upsample_with_pool_indices(conv_decode3, pool2_indices, conv_decode3.get_shape(), scale=2, name='upsample2')
-    upsample2 = deconv_layer(conv_decode3, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT//2, IMAGE_WIDTH//2, 64], 2, "up2")
-    # decode 2
+    upsample2 = deconv_layer(conv_decode3, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT // 2, IMAGE_WIDTH // 2, 64], 2, "up2")
     conv_decode2 = conv_layer_with_bn(upsample2, [7, 7, 64, 64], phase_train, False, name="conv_decode2")
 
-    # upsample1
-    # upsample1 = upsample_with_pool_indices(conv_decode2, pool1_indices, conv_decode2.get_shape(), scale=2, name='upsample1')
     upsample1 = deconv_layer(conv_decode2, [2, 2, 64, 64], [batch_size, IMAGE_HEIGHT, IMAGE_WIDTH, 64], 2, "up1")
-    # decode4
     conv_decode1 = conv_layer_with_bn(upsample1, [7, 7, 64, 64], phase_train, False, name="conv_decode1")
 
-    """ end of Decode """
-    """ Start Classify """
-    # output predicted class number
+    return conv_decode1
+
+
+def classifier(input, labels, loss_func):
+    """ output predicted class number """
+
     with tf.variable_scope('conv_classifier') as scope:
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 64, NUM_CLASSES],
                                              initializer=msra_initializer(1, 64),
                                              wd=0.0005)
-        conv = tf.nn.conv2d(conv_decode1, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(input, kernel, [1, 1, 1, 1], padding='SAME')
         biases = _variable_on_cpu('biases', [NUM_CLASSES], tf.constant_initializer(0.0))
         conv_classifier = tf.nn.bias_add(conv, biases, name=scope.name)
 
     logit = conv_classifier
     loss = cal_loss(conv_classifier, labels, loss_func)
 
-    return loss, logit
+    return logit, loss
 
 
 def train(total_loss, global_step):
@@ -237,38 +221,31 @@ def train(total_loss, global_step):
 
 
 def test(FLAGS):
-    max_steps = FLAGS.max_steps
-    batch_size = FLAGS.batch_size
-    train_dir = FLAGS.log_dir
-    test_dir = FLAGS.test_dir
+    test_dir = 'test.txt'
     test_ckpt = FLAGS.testing
     image_w = FLAGS.image_w
     image_h = FLAGS.image_h
     image_c = FLAGS.image_c
+    loss_func = FLAGS.loss
     # testing should set BATCH_SIZE = 1
     batch_size = 1
 
     image_filenames, label_filenames = get_filename_list(test_dir)
 
-    test_data_node = tf.placeholder(
-        tf.float32,
-        shape=[batch_size, image_h, image_w, image_c])
-
+    test_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
     test_labels_node = tf.placeholder(tf.int64, shape=[batch_size, IMAGE_HEIGHT, IMAGE_WIDTH, 1])
-
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
-    loss, logits = inference(test_data_node, test_labels_node, batch_size, phase_train)
-
+    encode = encoder(test_data_node, batch_size, phase_train)
+    decode = decoder(encode, batch_size, phase_train)
+    logits, loss = classifier(decode, test_labels_node, loss_func)
     pred = tf.argmax(logits, axis=3)
+
     # get moving avg
-    variable_averages = tf.train.ExponentialMovingAverage(
-        MOVING_AVERAGE_DECAY)
+    variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY)
     variables_to_restore = variable_averages.variables_to_restore()
 
     saver = tf.train.Saver(variables_to_restore)
-
-    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.0001)
 
     with tf.Session() as sess:
         # Load checkpoint
@@ -314,8 +291,8 @@ def training(FLAGS, is_finetune=False):
     max_steps = FLAGS.max_steps
     batch_size = FLAGS.batch_size
     log_dir = FLAGS.log_dir + FLAGS.note + '/'
-    image_dir = FLAGS.image_dir
-    val_dir = FLAGS.val_dir
+    image_dir = 'train.txt'
+    val_dir = 'val.txt'
     finetune_ckpt = FLAGS.finetune
     image_w = FLAGS.image_w
     image_h = FLAGS.image_h
@@ -331,22 +308,19 @@ def training(FLAGS, is_finetune=False):
     val_image_filenames, val_label_filenames = get_filename_list(val_dir)
 
     with tf.Graph().as_default():
-
         train_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
-
         train_labels_node = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
-
         phase_train = tf.placeholder(tf.bool, name='phase_train')
-
         global_step = tf.Variable(0, trainable=False)
 
-        # For CamVid
+        # TODO change
         images, labels = CamVidInputs(image_filenames, label_filenames, batch_size)
-
         val_images, val_labels = CamVidInputs(val_image_filenames, val_label_filenames, batch_size)
 
         # Build a Graph that computes the logits predictions from the inference model.
-        loss, eval_prediction = inference(train_data_node, train_labels_node, batch_size, phase_train, loss_func)
+        encode = encoder(train_data_node, batch_size, phase_train)
+        decode = decoder(encode, batch_size, phase_train)
+        eval_prediction, loss = classifier(decode, train_labels_node, loss_func)
 
         # Build a Graph that trains the model with one batch of examples and updates the model parameters.
         train_op, lr = train(loss, global_step)
@@ -354,8 +328,6 @@ def training(FLAGS, is_finetune=False):
         saver = tf.train.Saver(tf.global_variables())
 
         summary_op = tf.summary.merge_all()
-
-        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.0001)
 
         with tf.Session() as sess:
             # Build an initialization operation to run below.
@@ -388,7 +360,6 @@ def training(FLAGS, is_finetune=False):
                 }
                 start_time = time.time()
 
-                # _, loss_value, _l, _r, _inse = sess.run([train_op, loss], feed_dict=feed_dict)
                 _, loss_value, cur_lr = sess.run([train_op, loss, lr], feed_dict=feed_dict)
                 duration = time.time() - start_time
 
