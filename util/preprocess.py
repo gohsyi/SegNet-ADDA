@@ -111,11 +111,41 @@ def preprocess(data_folder, label_folder, test_folder, ALREADY_HAVE_PNG):
             f.write(image + ' ' + label + '\n')
 
 
+def preprocess_transfer_data(img_path, save_image=True):
+    img_save_path = 'glaucoma/Rotate_180/'
+    txt_save_path = 'rotate_180.txt'
+
+    if not os.path.exists(img_save_path):
+        os.mkdir(img_save_path)
+    if not os.path.exists(img_save_path + 'img/'):
+        os.mkdir(img_save_path + 'img/')
+    if not os.path.exists(img_save_path + 'gt/'):
+        os.mkdir(img_save_path + 'gt/')
+
+    with open(img_path, 'r') as f:
+        f_rotate_180 = open(txt_save_path, 'w')
+
+        for line in f.readlines():
+            [image, label] = line.strip('\n').split(' ')
+            print('processing {}'.format(image))
+            image_name = image.split('/')[-1]
+            label_name = label.split('/')[-1]
+            image = Image.open(image)
+            label = Image.open(label)
+
+            if save_image:
+                image.transpose(Image.ROTATE_180).save(img_save_path + 'img/' + image_name)
+                label.transpose(Image.ROTATE_180).save(img_save_path + 'gt/' + label_name)
+
+            f_rotate_180.write(img_save_path + 'img/' + image_name + ' ')
+            f_rotate_180.write(img_save_path + 'gt/' + label_name + '\n')
+
+
 if __name__ == '__main__':
-    preprocess(data_folder='./glaucoma/Training400/Training400/',
-               label_folder='./glaucoma/Disc_Cup_Masks/',
-               test_folder='./glaucoma/Validation400/',
-               ALREADY_HAVE_PNG=False)
+    preprocess(data_folder='glaucoma/Training400/Training400/',
+               label_folder='glaucoma/Disc_Cup_Masks/',
+               test_folder='glaucoma/Validation400/',
+               ALREADY_HAVE_PNG=True)
 
     print('cup_area: ', cup_area)
     print('disc_area: ', disc_area)

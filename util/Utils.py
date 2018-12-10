@@ -1,25 +1,6 @@
-from PIL import Image
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
-
-
-def _activation_summary(x):
-    """Helper to create summaries for activations.
-
-      Creates a summary that provides a histogram of activations.
-      Creates a summary that measure the sparsity of activations.
-
-      Args:
-        x: Tensor
-      Returns:
-        nothing
-      """
-    # session. This helps the clarity of presentation on tensorboard.
-    tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-    tf.summary.histogram(tensor_name + '/activations', x)
-    tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+from math import ceil
 
 
 def _add_loss_summaries(total_loss):
@@ -144,85 +125,76 @@ def per_class_acc(output, predictions, label_tensor):
         output.write("    class # %d accuracy = %f " % (ii, acc))
 
 
-""" transfer learning DANN part """
 
-def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
-
-
-def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
-
-
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-
-
-def max_pool_2x2(x):
-    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                          strides=[1, 2, 2, 1], padding='SAME')
-
-
-def shuffle_aligned_list(data):
-    """Shuffle arrays in a list by shuffling each array identically."""
-    num = data[0].shape[0]
-    p = np.random.permutation(num)
-    return [d[p] for d in data]
-
-
-def batch_generator(data, batch_size, shuffle=True):
-    """Generate batches of data.
-
-    Given a list of array-like objects, generate batches of a given
-    size by yielding a list of array-like objects corresponding to the
-    same slice of each input.
+def get_deconv_filter(f_shape):
     """
-    if shuffle:
-        data = shuffle_aligned_list(data)
+        reference: https://github.com/MarvinTeichmann/tensorflow-fcn
+    """
+    width = f_shape[0]
+    heigh = f_shape[0]
+    f = ceil(width / 2.0)
+    c = (2 * f - 1 - f % 2) / (2.0 * f)
+    bilinear = np.zeros([f_shape[0], f_shape[1]])
+    for x in range(width):
+        for y in range(heigh):
+            value = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
+            bilinear[x, y] = value
+    weights = np.zeros(f_shape)
+    for i in range(f_shape[2]):
+        weights[:, :, i, i] = bilinear
 
-    batch_count = 0
-    while True:
-        if batch_count * batch_size + batch_size >= len(data[0]):
-            batch_count = 0
-
-            if shuffle:
-                data = shuffle_aligned_list(data)
-
-        start = batch_count * batch_size
-        end = start + batch_size
-        batch_count += 1
-        yield [d[start:end] for d in data]
-
-
-def imshow_grid(images, shape=[6, 8]):
-    """Plot images in a grid of a given shape."""
-    fig = plt.figure(1)
-    grid = ImageGrid(fig, 111, nrows_ncols=shape, axes_pad=0.05)
-
-    size = shape[0] * shape[1]
-    for i in range(size):
-        grid[i].axis('off')
-        grid[i].imshow(images[i])  # The AxesGrid object work as a list of axes.
-
-    plt.show()
+    init = tf.constant_initializer(value=weights, dtype=tf.float32)
+    return tf.get_variable(name="up_filter", initializer=init, shape=weights.shape)
 
 
-def plot_embedding(X, y, d, title=None):
-    """Plot an embedding X with the class label y colored by the domain d."""
-    x_min, x_max = np.min(X, 0), np.max(X, 0)
-    X = (X - x_min) / (x_max - x_min)
+def deconv_layer(inputT, f_shape, output_shape, stride=2, name=None):
+    # output_shape = [b, w, h, c]
+    # sess_temp = tf.InteractiveSession()
+    sess_temp = tf.global_variables_initializer()
+    strides = [1, stride, stride, 1]
+    with tf.variable_scope(name):
+        weights = get_deconv_filter(f_shape)
+        deconv = tf.nn.conv2d_transpose(inputT, weights, output_shape, strides=strides, padding='SAME')
+    return deconv
 
-    # Plot colors numbers
-    plt.figure(figsize=(10, 10))
-    ax = plt.subplot(111)
-    for i in range(X.shape[0]):
-        # plot colored number
-        plt.text(X[i, 0], X[i, 1], str(y[i]),
-                 color=plt.cm.bwr(d[i] / 1.),
-                 fontdict={'weighted': 'bold', 'size': 9})
 
-    plt.xticks([]), plt.yticks([])
-    if title is not None:
-        plt.title(title)
+def batch_norm_layer(inputT, is_training, scope):
+    return tf.cond(is_training,
+                   lambda: tf.contrib.layers.batch_norm(inputT, is_training=True,
+                                                        center=False, updates_collections=None, scope=scope+"_bn"),
+                   lambda: tf.contrib.layers.batch_norm(inputT, is_training=False,
+                                                        updates_collections=None, center=False, scope=scope+"_bn", reuse = True))
+
+
+
+def orthogonal_initializer(scale = 1.1):
+    """
+    From Lasagne and Keras. Reference: Saxe et al., http://arxiv.org/abs/1312.6120
+    """
+
+    def _initializer(shape, dtype=tf.float32, partition_info=None):
+        flat_shape = (shape[0], np.prod(shape[1:]))
+        a = np.random.normal(0.0, 1.0, flat_shape)
+        u, _, v = np.linalg.svd(a, full_matrices=False)
+        # pick the one with the correct shape
+        q = u if u.shape == flat_shape else v
+        q = q.reshape(shape)  # this needs to be corrected to float32
+        return tf.constant(scale * q[:shape[0], :shape[1]], dtype=tf.float32)
+
+    return _initializer
+
+
+def conv_layer_with_bn(inputT, shape, train_phase, activation=True, name=None):
+    in_channel = shape[2]
+    out_channel = shape[3]
+    k_size = shape[0]
+    with tf.variable_scope(name) as scope:
+        kernel = _variable_with_weight_decay('ort_weights', shape=shape, initializer=orthogonal_initializer(), wd=None)
+        conv = tf.nn.conv2d(inputT, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = _variable_on_cpu('biases', [out_channel], tf.constant_initializer(0.0))
+        bias = tf.nn.bias_add(conv, biases)
+        if activation is True:
+            conv_out = tf.nn.relu(batch_norm_layer(bias, train_phase, scope.name))
+        else:
+            conv_out = batch_norm_layer(bias, train_phase, scope.name)
+    return conv_out

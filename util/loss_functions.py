@@ -42,7 +42,7 @@ def weighted_loss(logits, labels, num_classes, head=None):
     return loss
 
 
-def dice_coe(output, target, axis=0, loss_type='jaccard', smooth=1e-5):
+def _dice_coe(output, target, axis=0, loss_type='jaccard', smooth=1e-5):
     """ Soft dice (Sørensen or Jaccard) coefficient for comparing the similarity
     of two batch of data, usually be used for binary image segmentation
     i.e. labels are binary. The coefficient between 0 to 1, 1 means totally match.
@@ -104,7 +104,7 @@ def dice_loss(logits, labels, num_classes):
 
         softmax = tf.nn.softmax(logits)
 
-        loss = 1 - dice_coe(softmax, labels)
+        loss = 1 - _dice_coe(softmax, labels)
         # loss = tf.Print(loss, [loss], "dice loss is ")
 
         tf.add_to_collection('losses', loss)
@@ -116,13 +116,7 @@ def dice_loss(logits, labels, num_classes):
 
 """ loss functions for ADDA """
 
-def build_classify_loss(self, logits, labels):
-    c_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels)
-    c_loss = tf.reduce_mean(c_loss)
-    return c_loss
-
-
-def build_w_loss(self, disc_s, disc_t):
+def wgan_loss(disc_s, disc_t):
     d_loss = -tf.reduce_mean(disc_s) + tf.reduce_mean(disc_t)
     g_loss = -tf.reduce_mean(disc_t)
     tf.summary.scalar("g_loss", g_loss)
@@ -130,7 +124,7 @@ def build_w_loss(self, disc_s, disc_t):
     return g_loss, d_loss
 
 
-def build_ad_loss(self, disc_s, disc_t):
+def adv_loss(disc_s, disc_t):
     g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_t, labels=tf.ones_like(disc_t))
     g_loss = tf.reduce_mean(g_loss)
     d_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_s, labels=tf.ones_like(disc_s))) + \
@@ -140,7 +134,7 @@ def build_ad_loss(self, disc_s, disc_t):
     return g_loss, d_loss
 
 
-def build_ad_loss_v2(self, disc_s, disc_t):
+def adv_loss_v2(disc_s, disc_t):
     d_loss = -tf.reduce_mean(tf.log(disc_s + 1e-12) + tf.log(1 - disc_t + 1e-12))
     g_loss = -tf.reduce_mean(tf.log(disc_t + 1e-12))
     return g_loss, d_loss
