@@ -17,5 +17,7 @@ segmentation/
 
 *.pyc
 
+*.txt
+
 *.ipynb
 .ipynb_checkpoints
