@@ -147,6 +147,8 @@ if __name__ == '__main__':
                test_folder='glaucoma/Validation400/',
                ALREADY_HAVE_PNG=True)
 
+    preprocess_transfer_data('train.txt')
+
     print('cup_area: ', cup_area)
     print('disc_area: ', disc_area)
     print('other_area: ', other_area)

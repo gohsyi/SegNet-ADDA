@@ -4,11 +4,12 @@ import numpy as np
 from datetime import datetime
 from PIL import Image
 
-from util.OUTPUT import Output
-from util.Utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, print_hist_summery, get_hist, per_class_acc
-from util.Utils import conv_layer_with_bn, deconv_layer
-from util.Inputs import get_filename_list, generate_batch, get_all_test_data
+from util.output import Output
+from util.utils import _variable_with_weight_decay, _variable_on_cpu, _add_loss_summaries, print_hist_summery, get_hist, per_class_acc
+from util.utils import conv_layer_with_bn, deconv_layer
 from util.loss_functions import loss, weighted_loss, dice_loss
+from util.dataset import Dataset
+
 
 class SegNet():
 
@@ -33,12 +34,13 @@ class SegNet():
         self.log_dir = args.log_dir + args.note + '/'
         self.image_path = 'train.txt'
         self.val_path = 'val.txt'
-        self.test_path = 'test.txt'
+        self.test_path = args.test_path
         self.finetune_ckpt = args.finetune
         self.test_ckpt = args.test
         self.loss_func = args.loss
-        self.output = Output(output_path=args.log_dir, note=args.note)
         self.save_image = args.save_image
+        self.output = Output(output_path=args.log_dir, note=args.note)
+        self.dataset = Dataset(args)
 
 
     def msra_initializer(self, kl, dl):
@@ -170,7 +172,7 @@ class SegNet():
         num_classes = self.num_classes
         batch_size = 1  # testing should set BATCH_SIZE = 1
 
-        image_filenames, label_filenames = get_filename_list(self.test_path)
+        image_filenames, label_filenames = self.dataset.get_filename_list(self.test_path)
 
         test_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
         test_labels_node = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
@@ -189,9 +191,10 @@ class SegNet():
             # Load checkpoint
             saver.restore(sess, self.test_ckpt)
 
-            images, labels = get_all_test_data(image_filenames, label_filenames)
+            images, labels = self.dataset.get_all_test_data(image_filenames, label_filenames)
 
             hist = np.zeros((num_classes, num_classes))
+
             for image_batch, label_batch, path in zip(images, labels, image_filenames):
                 feed_dict = {
                     test_data_node: image_batch,
@@ -236,8 +239,6 @@ class SegNet():
 
         finetune = False if not self.finetune_ckpt else True
         startstep = 0 if not finetune else int(finetune_ckpt.split('-')[-1])
-        image_filenames, label_filenames = get_filename_list(self.image_path)
-        val_image_filenames, val_label_filenames = get_filename_list(self.val_path)
 
         with tf.Graph().as_default():
             train_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
@@ -245,10 +246,8 @@ class SegNet():
             phase_train = tf.placeholder(tf.bool, name='phase_train')
             global_step = tf.Variable(0, trainable=False)
 
-            images, labels = generate_batch(image_filenames, label_filenames,
-                                            batch_size, image_h, image_w, image_c)
-            val_images, val_labels = generate_batch(val_image_filenames, val_label_filenames,
-                                                    batch_size, image_h, image_w, image_c)
+            images, labels = self.dataset.batch(batch_size=batch_size, path=self.image_path)
+            val_images, val_labels = self.dataset.batch(batch_size=batch_size, path=self.val_path)
 
             # Build a Graph that computes the logits predictions from the inference model.
             eval_prediction, loss = self.inference(train_data_node, train_labels_node, batch_size, phase_train, loss_func)
@@ -267,10 +266,6 @@ class SegNet():
                 else:
                     init = tf.global_variables_initializer()
                     sess.run(init)
-
-                # Start the queue runners.
-                coord = tf.train.Coordinator()
-                threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
                 # Summery placeholders
                 summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
@@ -343,7 +338,3 @@ class SegNet():
                     if step % 1000 == 0 or (step + 1) == self.max_steps + startstep:
                         checkpoint_path = os.path.join(log_dir, 'model.ckpt')
                         saver.save(sess, checkpoint_path, global_step=step)
-
-                coord.request_stop()
-                coord.join(threads)
-

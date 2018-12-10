@@ -12,6 +12,7 @@ model/.DS_Store
 glaucoma/
 
 segmentation/
+segmentation*/
 
 .idea/
 

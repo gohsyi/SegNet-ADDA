@@ -20,6 +20,9 @@ tf.app.flags.DEFINE_string('log_dir', "logs/", """ dir to store ckpt """)
 tf.app.flags.DEFINE_string('train_dir', "glaucoma/Training400/Training400/", """ path to train images """)
 tf.app.flags.DEFINE_string('gt_dir', "glaucoma/Disc_Cup_Masks/", """ path to ground true labels """)
 tf.app.flags.DEFINE_string('val_dir', "glaucoma/Validation400/", """ path to val images """)
+tf.app.flags.DEFINE_string('test_path', "test.txt", """ path to test """)
+tf.app.flags.DEFINE_string('train_path', "train.txt", """ path to train """)
+tf.app.flags.DEFINE_string('val_path', "val.txt", """ path to val """)
 tf.app.flags.DEFINE_integer('max_steps', "10000", """ max_steps """)
 tf.app.flags.DEFINE_integer('image_h', "240", """ image height """)
 tf.app.flags.DEFINE_integer('image_w', "240", """ image width """)
@@ -75,7 +78,7 @@ def main(args):
         sn = SegNet(FLAGS)
         sn.test()
     elif FLAGS.transfer:
-        preprocess_transfer_data('train.txt')
+        # preprocess_transfer_data('train.txt')
         adda = ADDA(FLAGS)
         adda.train()
     else:
