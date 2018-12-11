@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from model.segnet import SegNet
-from util.loss_functions import adv_loss
+from util.loss_functions import adv_loss, adv_loss_v2
 
 class ADDA(SegNet):
 
@@ -10,7 +10,7 @@ class ADDA(SegNet):
 
         self.src_image_path = 'train.txt'
         # self.src_val_path = 'val.txt'
-        self.tar_image_path = 'rotate_180.txt'
+        self.tar_image_path = 'validation400.txt'
         # self.tar_val_path = 'rotate_180_val.txt'
         self.ckpt_path = args.transfer
         self.scope_s = 's'  # source scope
@@ -27,7 +27,7 @@ class ADDA(SegNet):
             fc1 = tf.layers.dense(flat, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc1')
             fc2 = tf.layers.dense(fc1, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc2')
             fc3 = tf.layers.dense(fc2, 1, activation=None, trainable=trainable, name='fc3')
-        return fc3
+        return tf.nn.sigmoid(fc3)
 
 
     def train(self):
@@ -36,8 +36,8 @@ class ADDA(SegNet):
         image_c = self.image_c
         batch_size = self.batch_size
 
-        src_x_train, src_y_train = self.dataset.batch(batch_size=batch_size, path='train.txt')
-        tar_x_train, tar_y_train = self.dataset.batch(batch_size=batch_size, path='rotate_180.txt')
+        src_x_train, src_y_train = self.dataset.batch(batch_size=batch_size, path=self.src_image_path)
+        tar_x_train, tar_y_train = self.dataset.batch(batch_size=batch_size, path=self.tar_image_path)
 
         # for source domain
         # imitate inference, for restoring SegNet model
@@ -50,11 +50,13 @@ class ADDA(SegNet):
         src_variables = variable_averages.variables_to_restore()
 
         dis_src = self.discriminator(src_encode_output, reuse=False)
+        dis_src = tf.Print(dis_src, [dis_src], summarize=batch_size, name="D_s")
 
         # for target domain
         with tf.variable_scope(self.scope_t):
             tar_encode_output = self.encoder(tar_x_train, phase_train=tf.constant(True))
         dis_tar = self.discriminator(tar_encode_output, reuse=True)
+        dis_tar = tf.Print(dis_tar, [dis_tar], summarize=batch_size, name="D_t")
 
         # build loss
         g_loss, d_loss = adv_loss(dis_src, dis_tar)
@@ -78,4 +80,4 @@ class ADDA(SegNet):
                 _, d_loss_, = sess.run([optim_d, d_loss])
                 _, g_loss_ = sess.run([optim_g, g_loss])
                 if i % 10 == 0:
-                    print("step:{}, g_loss:{:.4f}, d_loss:{:.4f}".format(i, g_loss_, d_loss_))
+                    self.output.write("step:{}, g_loss:{:.4f}, d_loss:{:.4f}".format(i, g_loss_, d_loss_))

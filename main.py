@@ -19,7 +19,7 @@ tf.app.flags.DEFINE_float('learning_rate', "1e-3", """ initial lr """)
 tf.app.flags.DEFINE_string('log_dir', "logs/", """ dir to store ckpt """)
 tf.app.flags.DEFINE_string('train_dir', "glaucoma/Training400/Training400/", """ path to train images """)
 tf.app.flags.DEFINE_string('gt_dir', "glaucoma/Disc_Cup_Masks/", """ path to ground true labels """)
-tf.app.flags.DEFINE_string('test_dir', "glaucoma/Validation400/", """ path to val images """)
+tf.app.flags.DEFINE_string('test_dir', "glaucoma/Validation400/", """ path to test images """)
 tf.app.flags.DEFINE_string('test_path', "test.txt", """ path to test """)
 tf.app.flags.DEFINE_string('train_path', "train.txt", """ path to train """)
 tf.app.flags.DEFINE_string('val_path', "val.txt", """ path to val """)
@@ -44,13 +44,11 @@ def checkArgs():
         print('The model is set to Finetune from ckpt')
         print("check point file: %s" % FLAGS.finetune)
         print("Image dir: %s" % FLAGS.train_dir)
-        print("Val dir: %s" % FLAGS.val_dir)
     else:
         print('The model is set to training')
         print("Max training iteration: %d" % FLAGS.max_steps)
         print("Initial lr: %f" % FLAGS.learning_rate)
         print("Image dir: %s" % FLAGS.train_dir)
-        print("Val dir: %s" % FLAGS.val_dir)
 
     if FLAGS.loss != 'normal' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
         print("loss function not implemented")
@@ -71,7 +69,7 @@ def main(args):
         print("Start processing")
         preprocess(data_folder=FLAGS.train_dir,
                    label_folder=FLAGS.gt_dir,
-                   test_folder=FLAGS.val_dir,
+                   test_folder=FLAGS.test_dir,
                    ALREADY_HAVE_PNG=(False if FLAGS.preprocess == 'all' else True))
 
     if FLAGS.test:
