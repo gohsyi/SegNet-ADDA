@@ -119,8 +119,10 @@ def dice_loss(logits, labels, num_classes):
 def wgan_loss(disc_s, disc_t):
     d_loss = -tf.reduce_mean(disc_s) + tf.reduce_mean(disc_t)
     g_loss = -tf.reduce_mean(disc_t)
+
     tf.summary.scalar("g_loss", g_loss)
     tf.summary.scalar('d_loss', d_loss)
+
     return g_loss, d_loss
 
 
@@ -129,12 +131,15 @@ def adv_loss(disc_s, disc_t):
     g_loss = tf.reduce_mean(g_loss)
     d_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_s, labels=tf.ones_like(disc_s))) + \
              tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_t, labels=tf.zeros_like(disc_t)))
+
     tf.summary.scalar("g_loss", g_loss)
     tf.summary.scalar('d_loss', d_loss)
+
     return g_loss, d_loss
 
 
 def adv_loss_v2(disc_s, disc_t):
     d_loss = -tf.reduce_mean(tf.log(disc_s + 1e-12) + tf.log(1 - disc_t + 1e-12))
     g_loss = -tf.reduce_mean(tf.log(disc_t + 1e-12))
+
     return g_loss, d_loss

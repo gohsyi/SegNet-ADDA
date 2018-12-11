@@ -110,6 +110,10 @@ def preprocess(data_folder, label_folder, test_folder, ALREADY_HAVE_PNG):
         for image, label in test:  # test_dir is no use for now
             f.write(image + ' ' + label + '\n')
 
+    with open('validation400.txt', 'w') as f:
+        for image in test_dir:
+            f.write(image + ' glaucoma/Disc_Cup_Masks/Non-Glaucoma/n0132.png\n')
+
 
 def preprocess_transfer_data(img_path, save_image=True):
     img_save_path = 'glaucoma/Rotate_180/'
@@ -147,7 +151,7 @@ if __name__ == '__main__':
                test_folder='glaucoma/Validation400/',
                ALREADY_HAVE_PNG=True)
 
-    preprocess_transfer_data('train.txt')
+    # preprocess_transfer_data('train.txt')
 
     print('cup_area: ', cup_area)
     print('disc_area: ', disc_area)

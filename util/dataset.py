@@ -46,7 +46,9 @@ class Dataset():
         image_filenames, label_filenames = self.get_filename_list(path)
         dataset = tf.data.Dataset.from_tensor_slices((image_filenames, label_filenames))
         batch = dataset.map(self._read_image_label).batch(batch_size).repeat()
-        return batch.make_one_shot_iterator().get_next()
+        shuffle_batch = batch.shuffle(0.4 * len(image_filenames))
+
+        return shuffle_batch.make_one_shot_iterator().get_next()
 
 
     def get_all_test_data(self, im_list, la_list):
