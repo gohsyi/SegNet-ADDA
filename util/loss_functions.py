@@ -139,6 +139,13 @@ def adv_loss(disc_s, disc_t):
 
 
 def adv_loss_v2(disc_s, disc_t):
+    disc_s = tf.sigmoid(disc_s)
+    disc_t = tf.sigmoid(disc_t)
+
     d_loss = -tf.reduce_mean(tf.log(disc_s + 1e-12) + tf.log(1 - disc_t + 1e-12))
     g_loss = -tf.reduce_mean(tf.log(disc_t + 1e-12))
+    
+    tf.summary.scalar("g_loss", g_loss)
+    tf.summary.scalar('d_loss', d_loss)
+
     return g_loss, d_loss

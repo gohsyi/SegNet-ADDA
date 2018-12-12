@@ -58,10 +58,10 @@ class ADDA(SegNet):
         flat = tf.layers.Flatten()(inputs)
 
         fc1 = tf.layers.dense(flat, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc1')
-        fc2 = tf.layers.dense(fc1, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc2')
+        fc2 = tf.layers.dense(fc1, 128, activation=tf.nn.leaky_relu, trainable=trainable, name='fc2')
         fc3 = tf.layers.dense(fc2, 1, activation=None, trainable=trainable, name='fc3')
 
-        return tf.nn.sigmoid(fc3)
+        return fc3
 
 
     def train(self):
@@ -102,7 +102,7 @@ class ADDA(SegNet):
             # dis_tar = tf.Print(dis_tar, [dis_tar], summarize=batch_size, message="D_t: ")
 
         # build loss
-        g_loss, d_loss = adv_loss_v2(dis_src, dis_tar)
+        g_loss, d_loss = adv_loss(dis_src, dis_tar)
 
         # create optimizer for two task
         var_tar = tf.trainable_variables(self.scope_t)
@@ -118,8 +118,8 @@ class ADDA(SegNet):
             self.src_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.scope_s)
             self.tar_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.scope_t)
 
-            print(self.src_vars)
-            print(self.tar_vars)
+            # print(self.src_vars)
+            # print(self.tar_vars)
 
             src_saver = tf.train.Saver(self.src_vars)
             tar_saver = tf.train.Saver(self.tar_vars)
