@@ -141,5 +141,4 @@ def adv_loss(disc_s, disc_t):
 def adv_loss_v2(disc_s, disc_t):
     d_loss = -tf.reduce_mean(tf.log(disc_s + 1e-12) + tf.log(1 - disc_t + 1e-12))
     g_loss = -tf.reduce_mean(tf.log(disc_t + 1e-12))
-
     return g_loss, d_loss

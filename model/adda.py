@@ -3,6 +3,7 @@ import tensorflow as tf
 from model.segnet import SegNet
 from util.loss_functions import adv_loss, adv_loss_v2
 
+
 class ADDA(SegNet):
 
     def __init__(self, args):
@@ -50,16 +51,16 @@ class ADDA(SegNet):
         src_variables = variable_averages.variables_to_restore()
 
         dis_src = self.discriminator(src_encode_output, reuse=False)
-        dis_src = tf.Print(dis_src, [dis_src], summarize=batch_size, name="D_s")
+        dis_src = tf.Print(dis_src, [dis_src], summarize=batch_size, message="D_s: ")
 
         # for target domain
         with tf.variable_scope(self.scope_t):
             tar_encode_output = self.encoder(tar_x_train, phase_train=tf.constant(True))
         dis_tar = self.discriminator(tar_encode_output, reuse=True)
-        dis_tar = tf.Print(dis_tar, [dis_tar], summarize=batch_size, name="D_t")
+        dis_tar = tf.Print(dis_tar, [dis_tar], summarize=batch_size, message="D_t: ")
 
         # build loss
-        g_loss, d_loss = adv_loss(dis_src, dis_tar)
+        g_loss, d_loss = adv_loss_v2(dis_src, dis_tar)
 
         # create optimizer for two task
         var_tar = tf.trainable_variables(self.scope_t)
