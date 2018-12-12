@@ -69,7 +69,10 @@ class ADDA(SegNet):
         var_d = tf.trainable_variables(self.scope_d)
         optim_d = tf.train.AdamOptimizer(self.lr_d).minimize(d_loss, var_list=var_d)
 
-        with tf.Session() as sess:
+        config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+        config.gpu_options.allow_growth = True
+
+        with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
             src_saver = tf.train.Saver(src_variables)
             src_saver.restore(sess, self.ckpt_path)
