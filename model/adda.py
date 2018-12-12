@@ -58,8 +58,8 @@ class ADDA(SegNet):
         flat = tf.layers.Flatten()(inputs)
 
         fc1 = tf.layers.dense(flat, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc1')
-        # fc2 = tf.layers.dense(fc1, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc2')
-        fc3 = tf.layers.dense(flat, 1, activation=None, trainable=trainable, name='fc3')
+        fc2 = tf.layers.dense(fc1, 576, activation=tf.nn.leaky_relu, trainable=trainable, name='fc2')
+        fc3 = tf.layers.dense(fc2, 1, activation=None, trainable=trainable, name='fc3')
 
         return tf.nn.sigmoid(fc3)
 
