@@ -159,12 +159,12 @@ def deconv_layer(inputT, f_shape, output_shape, stride=2, name=None):
 
 
 def batch_norm_layer(inputT, is_training, scope):
+    scope = scope.split('/')[-1]  # to fix scope bug
     return tf.cond(is_training,
                    lambda: tf.contrib.layers.batch_norm(inputT, is_training=True,
                                                         center=False, updates_collections=None, scope=scope+"_bn"),
                    lambda: tf.contrib.layers.batch_norm(inputT, is_training=False,
                                                         updates_collections=None, center=False, scope=scope+"_bn", reuse = True))
-
 
 
 def orthogonal_initializer(scale = 1.1):

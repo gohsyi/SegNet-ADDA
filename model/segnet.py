@@ -41,6 +41,8 @@ class SegNet():
         self.save_image = args.save_image
         self.output = Output(output_path=args.log_dir, note=args.note)
         self.dataset = Dataset(args)
+        self.sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+        self.sess_config.gpu_options.allow_growth = True
 
 
     def msra_initializer(self, kl, dl):
@@ -68,7 +70,7 @@ class SegNet():
             raise Exception("Unknow loss_type")
 
 
-    def encoder(self, input, phase_train=False):
+    def encoder(self, input, phase_train):
         """ down sample """
 
         norm1 = tf.nn.lrn(input=input, depth_radius=5, bias=1.0, alpha=0.0001, beta=0.75, name='norm1')
@@ -109,7 +111,7 @@ class SegNet():
 
 
     def classifier(self, input, labels, loss_func):
-        """ output predicted class number """
+        """ output predicted class number and loss """
 
         with tf.variable_scope('conv_classifier') as scope:
             kernel = _variable_with_weight_decay(name='weights',
@@ -187,10 +189,7 @@ class SegNet():
 
         saver = tf.train.Saver(variables_to_restore)
 
-        config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-        config.gpu_options.allow_growth = True
-
-        with tf.Session(config=config) as sess:
+        with tf.Session(config=self.sess_config) as sess:
             # Load checkpoint
             saver.restore(sess, self.test_ckpt)
 
@@ -262,10 +261,7 @@ class SegNet():
 
             summary_op = tf.summary.merge_all()
 
-            config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-            config.gpu_options.allow_growth = True
-
-            with tf.Session(config=config) as sess:
+            with tf.Session(config=self.sess_config) as sess:
                 # Build an initialization operation to run below.
                 if (finetune):
                     saver.restore(sess, finetune_ckpt)

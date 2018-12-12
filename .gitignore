@@ -22,3 +22,9 @@ segmentation*/
 
 *.ipynb
 .ipynb_checkpoints
+
+*.csv
+
+*.bmp
+*.png
+*.jpg

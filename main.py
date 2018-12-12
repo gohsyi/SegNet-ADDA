@@ -1,9 +1,11 @@
 import os
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import tensorflow as tf
+
 from model.segnet import SegNet
 from model.adda import ADDA
 from util.preprocess import preprocess, preprocess_transfer_data
-
 
 FLAGS = tf.app.flags.FLAGS
 
