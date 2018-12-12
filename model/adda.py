@@ -25,6 +25,8 @@ class ADDA(SegNet):
         self.lr_g = 1e-3
         self.lr_d = 1e-3
 
+        self.generate_src_tar_model()
+
 
     def generate_src_tar_model(self):
         vars = []
@@ -48,6 +50,8 @@ class ADDA(SegNet):
             tar_saver.save(sess, self.tar_ckpt_path)
             print('model saved to {}'.format(self.tar_ckpt_path))
             tmp_saver.save(sess, self.ckpt_dir + 'model.ckpt')
+
+        tf.reset_default_graph()  # to avoid variables naming violence
 
 
     def discriminator(self, inputs, trainable=True):
@@ -160,7 +164,7 @@ class ADDA(SegNet):
                     pred_image[pred_image == 1] = 128
                     pred_image[pred_image == 2] = 255
                     pred_image = Image.fromarray(np.uint8(pred_image))
-                    save_path = self.ckpt_dir + '{}.bmp'.format(i)
+                    save_path = self.log_dir + '{}.bmp'.format(i)
                     # pred_image = pred_image.resize((self.image_w_origin, self.image_h_origin))
                     pred_image.save(save_path)
                     print("image saved to {}".format(save_path))
