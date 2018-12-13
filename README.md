@@ -1,78 +1,65 @@
-# changes
-Add preprocess.py to preprocess images
+# Introduction
+This is my project for course CS386: Digital Image Processing (Shanghai Jiao Tong University). Me and Yuqiao He finished this together.
 
-run:
-
-`python main.py -preprocess nothing/txt/all`
-
-`nothing`: do nothing, choose this if you have perfect .txt files and .png files
-
-`txt`: only generate train.txt,test.txt,val.txt
-
-`all`: generate .txt files and preprocess images into 480x480 .png images
-
-You may want to modify main.py if your images is in somewhere else
-
-# Tensorflow-SegNet
-Implement slightly different (see below for detail) [SegNet](http://arxiv.org/abs/1511.00561) in tensorflow,
-successfully trained segnet-basic in CamVid dataset.
-
-Due to indice unravel still unavailable in tensorflow, the original upsampling
-method is temporarily replaced simply by deconv( or conv-transpose) layer (without pooling indices).
-You can follow the issue here: https://github.com/tensorflow/tensorflow/issues/2169
-(The current workaround for unpooling layer is a bit slow because it lacks of GPU support.)
+Our aim is to detect glaucoma with computer vision. I implemented SegNet along with ADDA (Adversarial Discriminative Domain Adaptation) for transfer learning.
 
 
-for model detail, please go to https://github.com/alexgkendall/caffe-segnet
+# Implementation
+
+###  SegNet
+The network architecture and some codes in this part are based on [Tensorflow-SegNet](https://github.com/tkuanlun350/Tensorflow-SegNet), 
+except for the data queue is implemented with `tf.data.dataset` rather than `tf.train.batch`
+which is deprecated by tensorflow currently.
+
+The SegNet is implemented as a class. The decoder and encoder network are seperate rather than in one `inference()`.
+
+### ADDA
+For the architecture details, you can refer to the paper [here](https://arxiv.org/abs/1702.05464).
+
+In our case, ADDA will learn a target encoder (as Generator) with GAN. 
+The Discriminator judges the encode result is from the source encoder or target encoder. 
+Note that the target decoder and classifier are not trained and directly use parameters from source SegNet.
+
+# ARGs
+
+- -preprocess
+    - `nothing`: do nothing, choose this if you have all txt files and .png files
+    - `txt`: only generate train.txt,test.txt,val.txt, ...
+    - `all`: generate .txt files and preprocess images into 240x240 .png images
+    - You may want to modify main.py if your images is in somewhere else
+
+- will add others
 
 # Requirement
-tensorflow 1.0
-Pillow (optional, for write label image)
+numpy
+
+tensorflow
+
+Pillow
+
 scikit-image
 
-# Update
-
-Update to tf 1.0
-
-Finally get some time to refactor a bit, removing some un-used function and
-remove the hard-coded file path Now the model should be easy to config.
-The parameters can be found in main.py.
-
-I planned to add more feature such as dilation, multi-resolution, sequential learning..etc.
-Making it more like a "basic" segmentation toolbox and support more dataset as well.
-Therefore the model and documentation will be changed accordingly in the future.
-
-More utility function will be added and some messed coding style will be fixed.
-Any feature request is also welcomed.
-
 # Usage
-see also example.sh
-training:
+#### training
 
-  python main.py --log_dir=path_to_your_log --image_dir=path_to_CamVid_train.txt --val_dir=path_to_CamVid_val.txt --batch_size=5
+  python main.py -log_dir logs/ -note dice -loss dice -preprocess all
 
-finetune:
+#### finetune
 
-  python main.py --finetune=path_to_saved_ckpt --log_dir=path_to_your_log --image_dir=path_to_CamVid_train.txt --val_dir=path_to_CamVid_val.txt --batch_size=5
+  python main.py -log_dir logs/ -note finetune -finetune logs/dice/model.ckpt-11999 -loss dice
 
-testing:
+#### test
 
-  python main.py --testing=path_to_saved_ckpt --log_dir=path_to_your_log --test_dir=path_to_CamVid_train.txt --batch_size=5 --save_image=True
+  python main.py -test logs/dice/model.ckpt-11999
 
-You can set default path and parameters in main.py line 6~18.
-note: in --testing you can specify whether to save predicted images, currently only save one image
-for manually checking, will be configured to be more flexible.
 
 # Dataset
-This Implement default to use CamVid dataset as described in the original SegNet paper,
-The dataset can be download from author's github https://github.com/alexgkendall/SegNet-Tutorial in the CamVid folder
-
 example format:
 
-"path_to_image1" "path_to_corresponded_label_image1",
+"path_to_image1" "path_to_corresponding_label_image1",
 
-"path_to_image2" "path_to_corresponded_label_image2",
+"path_to_image2" "path_to_corresponding_label_image2",
 
-"path_to_image3" "path_to_corresponded_label_image3",
+"path_to_image3" "path_to_corresponding_label_image3",
 
 .......

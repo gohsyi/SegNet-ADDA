@@ -208,9 +208,9 @@ class SegNet():
 
                 # output_image to verify
                 if (self.save_image):
-                    if not os.path.exists('segmentation'):
-                        os.mkdir('segmentation')
-                    save_path = 'segmentation/' + path.split('/')[-1].split('.')[0] + '.bmp'
+                    if not os.path.exists(self.save_image):
+                        os.mkdir(self.save_image)
+                    save_path = self.save_image + path.split('/')[-1].split('.')[0] + '.bmp'
                     print('saving to ' + save_path)
 
                     image = im[0]

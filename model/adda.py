@@ -12,10 +12,8 @@ class ADDA(SegNet):
         SegNet.__init__(self, args)
 
         self.src_image_path = 'train.txt'
-        # self.src_val_path = 'val.txt'
         self.tar_image_path = 'validation400.txt'
-        # self.tar_val_path = 'rotate_180_val.txt'
-        self.ckpt_dir = 'logs/dice/'
+        self.ckpt_dir = args.transfer
         self.src_ckpt_path = self.ckpt_dir + 'src_model.ckpt'
         self.tar_ckpt_path = self.ckpt_dir + 'tar_model.ckpt'
         self.scope_s = 's'  # source scope
@@ -49,7 +47,7 @@ class ADDA(SegNet):
             print('model saved to {}'.format(self.src_ckpt_path))
             tar_saver.save(sess, self.tar_ckpt_path)
             print('model saved to {}'.format(self.tar_ckpt_path))
-            tmp_saver.save(sess, self.ckpt_dir + 'model.ckpt')
+            tmp_saver.save(sess, self.ckpt_dir + 'model.ckpt')  # rewrite the checkpoint
 
         tf.reset_default_graph()  # to avoid variables naming violence
 
@@ -83,7 +81,6 @@ class ADDA(SegNet):
         # tar_label = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
 
         # for source domain
-        # imitate inference, for restoring SegNet model
         with tf.variable_scope(self.scope_s):
             src_encode_output = self.encoder(src_image, tf.constant(False))
             src_decode_output = self.decoder(src_encode_output, batch_size, tf.constant(False))
