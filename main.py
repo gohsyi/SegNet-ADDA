@@ -21,7 +21,7 @@ tf.app.flags.DEFINE_string('test_dir', "glaucoma/Validation400/", """ path to te
 tf.app.flags.DEFINE_string('test_path', "test.txt", """ path to test """)
 tf.app.flags.DEFINE_string('train_path', "train.txt", """ path to train """)
 tf.app.flags.DEFINE_string('val_path', "val.txt", """ path to val """)
-tf.app.flags.DEFINE_boolean('save_image', "segmentation/", """ where to save predicted image """)
+tf.app.flags.DEFINE_string('save_image', "segmentation/", """ where to save predicted image """)
 
 # experiment setting
 tf.app.flags.DEFINE_string('preprocess', 'nothing', """ nothing/txt/all """)
