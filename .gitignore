@@ -20,7 +20,6 @@ segmentation*/
 
 *.txt
 
-*.ipynb
 .ipynb_checkpoints
 
 *.csv
@@ -28,3 +27,6 @@ segmentation*/
 *.bmp
 *.png
 *.jpg
+
+json/
+

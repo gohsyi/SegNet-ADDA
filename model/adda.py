@@ -1,8 +1,10 @@
+import os
 import numpy as np
 import tensorflow as tf
 
 from PIL import Image
 from model.segnet import SegNet
+from util.utils import get_hist
 from util.loss_functions import adv_loss, adv_loss_v2
 
 
@@ -12,7 +14,7 @@ class ADDA(SegNet):
         SegNet.__init__(self, args)
 
         self.src_image_path = 'train.txt'
-        self.tar_image_path = 'validation400.txt'
+        self.tar_image_path = 'test.txt'
         self.ckpt_dir = args.transfer
         self.src_ckpt_path = self.ckpt_dir + 'src_model.ckpt'
         self.tar_ckpt_path = self.ckpt_dir + 'tar_model.ckpt'
@@ -68,32 +70,34 @@ class ADDA(SegNet):
         image_c = self.image_c
         batch_size = self.batch_size
 
-        src_image, src_label = self.dataset.batch(batch_size=batch_size, path=self.src_image_path)
-        tar_image, tar_label = self.dataset.batch(batch_size=batch_size, path=self.tar_image_path)
+        src_generator = self.dataset.batch(batch_size=batch_size, path=self.src_image_path)
+        tar_generator = self.dataset.batch(batch_size=batch_size, path=self.tar_image_path)
 
         # src_x_test, src_y_test = self.dataset.batch(batch_size=1, path=self.src_image_path)
         # tar_x_test, tar_y_test = self.dataset.batch(batch_size=1, path=self.tar_image_path)
 
-        # src_image = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
-        # src_label = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
-        #
-        # tar_image = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
-        # tar_label = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
+        src_images = tf.placeholder(tf.float32, shape=[None, image_h, image_w, image_c], name='src_images')
+        src_labels = tf.placeholder(tf.int64, shape=[None, image_h, image_w, 1], name='src_labels')
+
+        tar_images = tf.placeholder(tf.float32, shape=[None, image_h, image_w, image_c], name='tar_images')
+        tar_labels = tf.placeholder(tf.int64, shape=[None, image_h, image_w, 1], name='tar_labels')
+
+        phase_train = tf.placeholder(tf.bool, name='phase_train')
 
         # for source domain
         with tf.variable_scope(self.scope_s):
-            src_encode_output = self.encoder(src_image, tf.constant(False))
+            src_encode_output = self.encoder(src_images, tf.constant(False))
             src_decode_output = self.decoder(src_encode_output, batch_size, tf.constant(False))
-            src_logits, src_cls_loss = self.classifier(src_decode_output, src_label, self.loss_func)
+            src_logits, src_cls_loss = self.classifier(src_decode_output, src_labels, self.loss_func)
         with tf.variable_scope(self.scope_d):
             dis_src = self.discriminator(src_encode_output)
             # dis_src = tf.Print(dis_src, [dis_src], summarize=batch_size, message="D_s: ")
 
         # for target domain
         with tf.variable_scope(self.scope_t):
-            tar_encode_output = self.encoder(tar_image, phase_train=tf.constant(True))
+            tar_encode_output = self.encoder(tar_images, phase_train=phase_train)
             tar_decode_output = self.decoder(tar_encode_output, batch_size, tf.constant(False))
-            tar_logits, tar_cls_loss = self.classifier(tar_decode_output, tar_label, self.loss_func)
+            tar_logits, tar_cls_loss = self.classifier(tar_decode_output, tar_labels, self.loss_func)
         with tf.variable_scope(self.scope_d, reuse=True):
             dis_tar = self.discriminator(tar_encode_output)
             # dis_tar = tf.Print(dis_tar, [dis_tar], summarize=batch_size, message="D_t: ")
@@ -115,9 +119,6 @@ class ADDA(SegNet):
             self.src_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.scope_s)
             self.tar_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.scope_t)
 
-            # print(self.src_vars)
-            # print(self.tar_vars)
-
             src_saver = tf.train.Saver(self.src_vars)
             tar_saver = tf.train.Saver(self.tar_vars)
 
@@ -126,42 +127,52 @@ class ADDA(SegNet):
             tar_saver.restore(sess, self.tar_ckpt_path)
             print("tar model restored succesfully!")
 
-            # filewriter = tf.summary.FileWriter(logdir=self.log_dir, graph=sess.graph)
-
-            flat_src = tf.layers.Flatten()(src_encode_output)
-            flat_tar = tf.layers.Flatten()(tar_encode_output)
-
             for i in range(self.max_steps):
-                # _src_image, _tar_image = sess.run([src_image, tar_image])
-                # feed_dict_train = {
-                #     src_image: _src_image,
-                #     tar_image: _tar_image
-                # }
-                _, d_loss_, = sess.run([optim_d, d_loss])
-                _, g_loss_ = sess.run([optim_g, g_loss])
+                src_data = sess.run(src_generator)
+                tar_data = sess.run(tar_generator)
 
-                # _src_output, _tar_output = sess.run([flat_src, flat_tar], feed_dict)
-                #
-                # np.savetxt('src_output_{}.csv'.format(i), _src_output, delimiter=',')
-                # np.savetxt('tar_output_{}.csv'.format(i), _tar_output, delimiter=',')
+                _, d_loss_, = sess.run([optim_d, d_loss], feed_dict={
+                    src_images: src_data[0],
+                    tar_images: tar_data[0],
+                    phase_train: True
+                })
+                _, g_loss_ = sess.run([optim_g, g_loss], feed_dict={
+                    src_images: src_data[0],
+                    tar_images: tar_data[0],
+                    phase_train: True
+                })
 
-                if i % 10 == 0:
+                if i % 100 == 0:
                     self.output.write("step:{}, g_loss:{:.4f}, d_loss:{:.4f}".format(i, g_loss_, d_loss_))
                 if i % 1000 == 0:
-                    print("testing ...")
-                    # _tar_image, _tar_label = sess.run([tar_x_test, tar_y_test])
-                    # feed_dict_test = {
-                    #     tar_image: _tar_image,
-                    #     tar_label: _tar_label
-                    # }
+                    print("testing ...")  # TODO finish testing
                     pred = tf.argmax(tar_logits, axis=3)
-                    _, pred_image = sess.run([src_logits, pred])
-                    pred_image = pred_image[0]
-                    pred_image[pred_image == 0] = 0
-                    pred_image[pred_image == 1] = 128
-                    pred_image[pred_image == 2] = 255
-                    pred_image = Image.fromarray(np.uint8(pred_image))
-                    save_path = self.log_dir + '{}.bmp'.format(i)
-                    # pred_image = pred_image.resize((self.image_w_origin, self.image_h_origin))
-                    pred_image.save(save_path)
-                    print("image saved to {}".format(save_path))
+                    hist = np.zeros((self.num_classes, self.num_classes))
+                    image_filenames, label_filenames = self.dataset.get_filename_list(self.test_path)
+                    images, labels = self.dataset.get_all_test_data(image_filenames, label_filenames)
+                    images = [image[0] for image in images]
+                    labels = [label[0] for label in labels]
+                    images = [images[i: i+batch_size] for i in range(0, len(images), batch_size)]
+                    labels = [labels[i: i+batch_size] for i in range(0, len(labels), batch_size)]
+                    names = [image_filenames[i: i+batch_size] for i in range(0, len(image_filenames), batch_size)]
+
+                    for image_batch, label_batch, name_batch in zip(images, labels, names):
+                        logits, pred_image = sess.run([tar_logits, pred], feed_dict={
+                            tar_images: image_batch,
+                            phase_train: False
+                        })
+                        # pred_image[pred_image == 0] = 0
+                        # pred_image[pred_image == 1] = 128
+                        # pred_image[pred_image == 2] = 255
+                        # pred_image = Image.fromarray(np.uint8(pred_image))
+                        #
+                        # save_path = self.log_dir + name
+                        # pred_image = pred_image.resize((self.image_w_origin, self.image_h_origin))
+                        # pred_image.save(save_path)
+                        # print("image saved to {}".format(save_path))
+                        hist += get_hist(logits, label_batch)
+
+                    acc_total = np.diag(hist).sum() / hist.sum()
+                    iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
+                    print("acc: ", acc_total)
+                    print("mean IU: ", np.nanmean(iu))

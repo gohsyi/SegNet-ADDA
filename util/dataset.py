@@ -4,12 +4,10 @@ import skimage.io
 
 
 class Dataset():
-
     def __init__(self, args):
         self.image_h = args.image_h
         self.image_w = args.image_w
         self.image_c = args.image_c
-
 
     def get_filename_list(self, path):
         with open(path, 'r') as f:
@@ -22,7 +20,6 @@ class Dataset():
                 label_filenames.append(i[1])
 
         return image_filenames, label_filenames
-
 
     def _read_image_label(self, image_filename, label_filename):
         imageValue = tf.read_file(image_filename)
@@ -37,7 +34,6 @@ class Dataset():
 
         return image, label
 
-
     def batch(self, batch_size, path):
         """ usage :
                 batch = batch(batchsize)
@@ -47,9 +43,7 @@ class Dataset():
         dataset = tf.data.Dataset.from_tensor_slices((image_filenames, label_filenames))
         batch = dataset.map(self._read_image_label).batch(batch_size).repeat()
         shuffle_batch = batch.shuffle(int(0.4 * len(image_filenames)))
-
         return shuffle_batch.make_one_shot_iterator().get_next()
-
 
     def get_all_test_data(self, im_list, la_list):
         images = []

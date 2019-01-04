@@ -1,11 +1,9 @@
 import os
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 import tensorflow as tf
 
 from model.segnet import SegNet
 from model.adda import ADDA
-from util.preprocess import preprocess, preprocess_transfer_data
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -15,30 +13,26 @@ tf.app.flags.DEFINE_integer('gpu', '-1', """ which gpu device """)
 # path setting
 tf.app.flags.DEFINE_string('note', '0', """ note of the experiment """)
 tf.app.flags.DEFINE_string('log_dir', "logs/", """ dir to store ckpt """)
-tf.app.flags.DEFINE_string('train_dir', "glaucoma/Training400/Training400/", """ path to train images """)
-tf.app.flags.DEFINE_string('gt_dir', "glaucoma/Disc_Cup_Masks/", """ path to ground true labels """)
-tf.app.flags.DEFINE_string('test_dir', "glaucoma/Validation400/", """ path to test images """)
 tf.app.flags.DEFINE_string('test_path', "test.txt", """ path to test """)
 tf.app.flags.DEFINE_string('train_path', "train.txt", """ path to train """)
 tf.app.flags.DEFINE_string('val_path', "val.txt", """ path to val """)
 tf.app.flags.DEFINE_string('save_image', "segmentation/", """ where to save predicted image """)
 
 # experiment setting
-tf.app.flags.DEFINE_string('preprocess', 'nothing', """ nothing/txt/all """)
 tf.app.flags.DEFINE_string('loss', 'dice', """ normal/weighted/dice """)
 tf.app.flags.DEFINE_string('test', '', """ checkpoint file """)
 tf.app.flags.DEFINE_string('transfer', '', """ checkpoint dir, like 'logs/dice/' """)
 tf.app.flags.DEFINE_string('finetune', '', """ finetune checkpoint file """)
 tf.app.flags.DEFINE_integer('batch_size', "5", """ batch_size """)
-tf.app.flags.DEFINE_integer('max_steps', "10000", """ max training steps """)
+tf.app.flags.DEFINE_integer('max_steps', "1000000", """ max training steps """)
 tf.app.flags.DEFINE_float('learning_rate', "1e-3", """ initial lr """)
 
 # dataset setting
 tf.app.flags.DEFINE_integer('image_h', "240", """ image height """)
 tf.app.flags.DEFINE_integer('image_w', "240", """ image width """)
 tf.app.flags.DEFINE_integer('image_c', "3", """ image channel (RGB) """)
-tf.app.flags.DEFINE_integer('image_h_origin', "2056", """ original image height """)
-tf.app.flags.DEFINE_integer('image_w_origin', "2124", """ original image width """)
+tf.app.flags.DEFINE_integer('image_h_origin', "1634", """ original image height """)
+tf.app.flags.DEFINE_integer('image_w_origin', "1634", """ original image width """)
 tf.app.flags.DEFINE_integer('num_classes', "3", """ total class number """)
 
 
@@ -66,26 +60,17 @@ def checkArgs():
     print("GPU Device: %d" % FLAGS.gpu)
     print("Batch Size: %d" % FLAGS.batch_size)
     print("Log Dir: %s" % FLAGS.log_dir)
-    print("Preprocess: %s" % FLAGS.preprocess)
     print("Loss Function: %s" % FLAGS.loss)
 
 
 def main(args):
     checkArgs()
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
-    
-    if FLAGS.preprocess != 'nothing':
-        print("Start processing")
-        preprocess(data_folder=FLAGS.train_dir,
-                   label_folder=FLAGS.gt_dir,
-                   test_folder=FLAGS.test_dir,
-                   ALREADY_HAVE_PNG=(False if FLAGS.preprocess == 'all' else True))
 
     if FLAGS.test:
         sn = SegNet(FLAGS)
         sn.test()
     elif FLAGS.transfer:
-        # preprocess_transfer_data('train.txt')
         adda = ADDA(FLAGS)
         adda.train()
     else:

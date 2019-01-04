@@ -90,7 +90,7 @@ class SegNet():
         return pool4
 
 
-    def decoder(self, input, batch_size, phase_train, reuse=False, trainable=True):
+    def decoder(self, input, batch_size, phase_train):
         """ up sample """
         image_h = self.image_h
         image_w = self.image_w
@@ -248,8 +248,9 @@ class SegNet():
             phase_train = tf.placeholder(tf.bool, name='phase_train')
             global_step = tf.Variable(0, trainable=False)
 
-            images, labels = self.dataset.batch(batch_size=batch_size, path=self.image_path)
-            val_images, val_labels = self.dataset.batch(batch_size=batch_size, path=self.val_path)
+            # images, labels, image_names
+            images, labels, _ = self.dataset.batch(batch_size=batch_size, path=self.image_path)
+            val_images, val_labels, _ = self.dataset.batch(batch_size=batch_size, path=self.val_path)
 
             # Build a Graph that computes the logits predictions from the inference model.
             eval_prediction, loss = self.inference(train_data_node, train_labels_node, batch_size, phase_train, loss_func)
