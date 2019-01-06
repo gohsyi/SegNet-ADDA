@@ -144,7 +144,7 @@ class ADDA(SegNet):
 
                 if i % 100 == 0:
                     self.output.write("step:{}, g_loss:{:.4f}, d_loss:{:.4f}".format(i, g_loss_, d_loss_))
-                if i % 100 == 0:
+                if i % 1000 == 0:
                     print("testing ...")  # TODO finish testing
                     pred = tf.argmax(tar_logits, axis=3)
                     hist = np.zeros((self.num_classes, self.num_classes))

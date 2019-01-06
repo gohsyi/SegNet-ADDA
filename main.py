@@ -12,10 +12,6 @@ tf.app.flags.DEFINE_integer('gpu', '-1', """ which gpu device """)
 
 # path setting
 tf.app.flags.DEFINE_string('note', '0', """ note of the experiment """)
-tf.app.flags.DEFINE_string('log_dir', "logs/", """ dir to store ckpt """)
-tf.app.flags.DEFINE_string('test_path', "test.txt", """ path to test """)
-tf.app.flags.DEFINE_string('train_path', "train.txt", """ path to train """)
-tf.app.flags.DEFINE_string('val_path', "val.txt", """ path to val """)
 tf.app.flags.DEFINE_bool('save_image', "False", """ whether to save predicted image """)
 
 # experiment setting
@@ -46,12 +42,12 @@ def checkArgs():
     elif FLAGS.finetune != '':
         print('The model is set to Finetune from ckpt')
         print("check point file: %s" % FLAGS.finetune)
-        print("Image dir: %s" % FLAGS.train_dir)
+        print("Image dir: %s" % 'train.txt')
     else:
         print('The model is set to training')
         print("Max training iteration: %d" % FLAGS.max_steps)
         print("Initial lr: %f" % FLAGS.learning_rate)
-        print("Image dir: %s" % FLAGS.train_dir)
+        print("Image dir: %s" % 'train.txt')
 
     if FLAGS.loss != 'normal' and FLAGS.loss != 'weighted' and FLAGS.loss != 'dice':
         print("loss function not implemented")
@@ -59,7 +55,7 @@ def checkArgs():
 
     print("GPU Device: %d" % FLAGS.gpu)
     print("Batch Size: %d" % FLAGS.batch_size)
-    print("Log Dir: %s" % FLAGS.log_dir)
+    print("Log Dir: %s" % 'logs/')
     print("Loss Function: %s" % FLAGS.loss)
 
 

@@ -31,15 +31,15 @@ class SegNet():
         self.num_classes = args.num_classes  # cup, disc, other
         self.max_steps = args.max_steps
         self.batch_size = args.batch_size
-        self.log_dir = args.log_dir + args.note + '/'
+        self.log_dir = 'logs/' + args.note + '/'
         self.image_path = 'train.txt'
         self.val_path = 'val.txt'
-        self.test_path = args.test_path
+        self.test_path = 'test.txt'
         self.finetune_ckpt = args.finetune
         self.test_ckpt = args.test
         self.loss_func = args.loss
         self.save_image = args.save_image
-        self.output = Output(output_path=args.log_dir, note=args.note)
+        self.output = Output(output_path='logs/', note=args.note)
         self.dataset = Dataset(args)
         self.sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
         self.sess_config.gpu_options.allow_growth = True
@@ -249,8 +249,8 @@ class SegNet():
             global_step = tf.Variable(0, trainable=False)
 
             # images, labels, image_names
-            images, labels, _ = self.dataset.batch(batch_size=batch_size, path=self.image_path)
-            val_images, val_labels, _ = self.dataset.batch(batch_size=batch_size, path=self.val_path)
+            images, labels = self.dataset.batch(batch_size=batch_size, path=self.image_path)
+            val_images, val_labels = self.dataset.batch(batch_size=batch_size, path=self.val_path)
 
             # Build a Graph that computes the logits predictions from the inference model.
             eval_prediction, loss = self.inference(train_data_node, train_labels_node, batch_size, phase_train, loss_func)
