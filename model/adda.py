@@ -24,7 +24,7 @@ class ADDA(SegNet):
         self.scope_g = 'g'  # generator scope
         self.lr_g = 1e-3
         self.lr_d = 1e-3
-        self.save_image = True 
+        self.save_image = args.save_image
         self.generate_src_tar_model()
 
 
@@ -144,7 +144,7 @@ class ADDA(SegNet):
 
                 if i % 100 == 0:
                     self.output.write("step:{}, g_loss:{:.4f}, d_loss:{:.4f}".format(i, g_loss_, d_loss_))
-                if i % 500 == 0:
+                if i % 100 == 0:
                     print("testing ...")  # TODO finish testing
                     pred = tf.argmax(tar_logits, axis=3)
                     hist = np.zeros((self.num_classes, self.num_classes))
@@ -170,7 +170,7 @@ class ADDA(SegNet):
                                 save_path = '{}{}_{}'.format(self.log_dir, i, name.split('/')[-1])
                                 # image = image.resize((self.image_w_origin, self.image_h_origin))
                                 image.save(save_path)
-                                print("image saved to {}".format(save_path))
+                                # print("image saved to {}".format(save_path))
                         
                         hist += get_hist(logits, label_batch)
 
