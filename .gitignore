@@ -24,9 +24,5 @@ segmentation*/
 
 *.csv
 
-*.bmp
-*.png
-*.jpg
-
 json/
 
