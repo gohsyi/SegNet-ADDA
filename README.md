@@ -87,7 +87,7 @@ scikit-image
 
 # Usage
 
-1. Download and unzip our training and test dataset [glaucoma.zip](https://pan.baidu.com/s/1xIY6yQpKoQgd9ghBPG0sNg)(key :5akc) and put it in the project's root folder.
+1. Download and unzip our training and test dataset [glaucoma.zip](https://pan.baidu.com/s/1OxEiYgHoYYGjE1UXU1QY0w)(key :cyve) and put it in the project's root folder.
 
 2. Run preprocess.ipynb, which will preprocess images and labels, and generate three files: train.txt, val.txt, test.txt, representing training set, Validation set and test set. They store the path to each image and path to its corresponding label in one line.
 
