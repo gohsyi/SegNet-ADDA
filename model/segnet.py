@@ -26,20 +26,17 @@ class SegNet():
         self.image_h = args.image_h
         self.image_w = args.image_w
         self.image_c = args.image_c
-        self.image_h_origin = args.image_h_origin
-        self.image_w_origin = args.image_w_origin
         self.num_classes = args.num_classes  # cup, disc, other
         self.max_steps = args.max_steps
         self.batch_size = args.batch_size
-        self.log_dir = 'logs/' + args.note + '/'
-        self.image_path = 'train.txt'
-        self.val_path = 'val.txt'
-        self.test_path = 'test.txt'
+        self.log_dir = os.path.join('../logs', args.note)
+        self.image_path = '../train.txt'
+        self.test_path = '../test.txt'
         self.finetune_ckpt = args.finetune
         self.test_ckpt = args.test
         self.loss_func = args.loss
         self.save_image = args.save_image
-        self.output = Output(output_path='logs/', note=args.note)
+        self.output = Output(output_path='../logs/', note=args.note)
         self.dataset = Dataset(args)
         self.sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
         self.sess_config.gpu_options.allow_growth = True
@@ -176,8 +173,8 @@ class SegNet():
 
         image_filenames, label_filenames = self.dataset.get_filename_list(self.test_path)
 
-        test_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
-        test_labels_node = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
+        test_data_node = tf.placeholder(tf.float32, shape=[None, image_h, image_w, image_c])
+        test_labels_node = tf.placeholder(tf.int64, shape=[None, image_h, image_w, 1])
         phase_train = tf.placeholder(tf.bool, name='phase_train')
 
         logits, loss = self.inference(test_data_node, test_labels_node, batch_size, phase_train, self.loss_func)
@@ -218,7 +215,7 @@ class SegNet():
                     image[image == 1] = 128
                     image[image == 2] = 255
                     image = Image.fromarray(np.uint8(im[0]))
-                    image.resize((self.image_w_origin, self.image_h_origin)).save(save_path)
+                    image.save(save_path)
 
                 hist += get_hist(dense_prediction, label_batch)
 
@@ -243,14 +240,14 @@ class SegNet():
         startstep = 0 if not finetune else int(finetune_ckpt.split('-')[-1])
 
         with tf.Graph().as_default():
-            train_data_node = tf.placeholder(tf.float32, shape=[batch_size, image_h, image_w, image_c])
-            train_labels_node = tf.placeholder(tf.int64, shape=[batch_size, image_h, image_w, 1])
+            train_data_node = tf.placeholder(tf.float32, shape=[None, image_h, image_w, image_c])
+            train_labels_node = tf.placeholder(tf.int64, shape=[None, image_h, image_w, 1])
             phase_train = tf.placeholder(tf.bool, name='phase_train')
             global_step = tf.Variable(0, trainable=False)
 
             # images, labels, image_names
             images, labels = self.dataset.batch(batch_size=batch_size, path=self.image_path)
-            val_images, val_labels = self.dataset.batch(batch_size=batch_size, path=self.val_path)
+            val_images, val_labels = self.dataset.batch(batch_size=batch_size, path=self.test_path)
 
             # Build a Graph that computes the logits predictions from the inference model.
             eval_prediction, loss = self.inference(train_data_node, train_labels_node, batch_size, phase_train, loss_func)
@@ -301,13 +298,11 @@ class SegNet():
                         examples_per_sec = num_examples_per_step / duration
                         sec_per_batch = float(duration)
 
-                        format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f sec/batch)')
-                        # print(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
-                        output.write(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
-
                         # eval current training batch pre-class accuracy
                         pred = sess.run(eval_prediction, feed_dict=feed_dict)
-                        per_class_acc(output, pred, label_batch)
+                        acc, iu = per_class_acc(output, pred, label_batch)
+
+                        output.write(f'ep:{step}\tloss:%.2f\tacc:%.3f\tiu:%.3f' % (loss_value, acc, iu))
 
                     if step % 100 == 0:
                         print("start validating.....")
@@ -323,13 +318,15 @@ class SegNet():
                             })
                             total_val_loss += _val_loss
                             hist += get_hist(_val_pred, val_labels_batch)
-                        print("val loss: ", total_val_loss / self.val_iter)
+
                         acc_total = np.diag(hist).sum() / hist.sum()
                         iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
                         test_summary_str = sess.run(average_summary, feed_dict={average_pl: total_val_loss / self.val_iter})
                         acc_summary_str = sess.run(acc_summary, feed_dict={acc_pl: acc_total})
                         iu_summary_str = sess.run(iu_summary, feed_dict={iu_pl: np.nanmean(iu)})
-                        print_hist_summery(hist)
+
+                        acc, iu = print_hist_summery(hist)
+                        output.write('val\tloss:%.2f\tacc:%.3f\tiu:%.3f' % (total_val_loss/self.val_iter, acc, iu))
                         print(" end validating.... ")
 
                         summary_str = sess.run(summary_op, feed_dict=feed_dict)

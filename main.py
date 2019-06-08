@@ -3,12 +3,11 @@ import os
 import tensorflow as tf
 
 from model.segnet import SegNet
-from model.adda import ADDA
 
 FLAGS = tf.app.flags.FLAGS
 
 # gpu setting
-tf.app.flags.DEFINE_integer('gpu', '-1', """ which gpu device """)
+tf.app.flags.DEFINE_string('gpu', '-1', """ which gpu device """)
 
 # path setting
 tf.app.flags.DEFINE_string('note', '0', """ note of the experiment """)
@@ -27,9 +26,7 @@ tf.app.flags.DEFINE_float('learning_rate', "1e-3", """ initial lr """)
 tf.app.flags.DEFINE_integer('image_h', "240", """ image height """)
 tf.app.flags.DEFINE_integer('image_w', "240", """ image width """)
 tf.app.flags.DEFINE_integer('image_c', "3", """ image channel (RGB) """)
-tf.app.flags.DEFINE_integer('image_h_origin', "1634", """ original image height """)
-tf.app.flags.DEFINE_integer('image_w_origin', "1634", """ original image width """)
-tf.app.flags.DEFINE_integer('num_classes', "3", """ total class number """)
+tf.app.flags.DEFINE_integer('num_classes', "20", """ 20 kinds of objects """)
 
 
 def checkArgs():
@@ -53,15 +50,15 @@ def checkArgs():
         print("loss function not implemented")
         raise ValueError
 
-    print("GPU Device: %d" % FLAGS.gpu)
+    print("GPU Device: %s" % FLAGS.gpu)
     print("Batch Size: %d" % FLAGS.batch_size)
-    print("Log Dir: %s" % 'logs/')
     print("Loss Function: %s" % FLAGS.loss)
 
 
 def main(args):
     checkArgs()
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu
 
     if FLAGS.test:
         sn = SegNet(FLAGS)

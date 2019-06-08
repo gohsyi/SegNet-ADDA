@@ -88,15 +88,14 @@ def get_hist(predictions, labels):
 
 def print_hist_summery(hist):
     acc_total = np.diag(hist).sum() / hist.sum()
-    print('accuracy = %f' % np.nanmean(acc_total))
     iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
-    print('mean IU  = %f' % np.nanmean(iu))
     for ii in range(hist.shape[0]):
         if float(hist.sum(1)[ii]) == 0:
             acc = 0.0
         else:
             acc = np.diag(hist)[ii] / float(hist.sum(1)[ii])
         print("    class # %d accuracy = %f " % (ii, acc))
+    return np.nanmean(acc_total), np.nanmean(iu)
 
 
 def per_class_acc(output, predictions, label_tensor):
@@ -106,24 +105,18 @@ def per_class_acc(output, predictions, label_tensor):
     hist = np.zeros((num_class, num_class))
     for i in range(size):
         hist += fast_hist(labels[i].flatten(), predictions[i].argmax(2).flatten(), num_class)
+
     acc_total = np.diag(hist).sum() / hist.sum()
-
-    # print ('accuracy = %f'%np.nanmean(acc_total))
-    output.write('accuracy = %f' % np.nanmean(acc_total))
-
     iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
-
-    # print ('mean IU  = %f'%np.nanmean(iu))
-    output.write('mean IU  = %f' % np.nanmean(iu))
 
     for ii in range(num_class):
         if float(hist.sum(1)[ii]) == 0:
             acc = 0.0
         else:
             acc = np.diag(hist)[ii] / float(hist.sum(1)[ii])
-        # print("    class # %d accuracy = %f " % (ii, acc))
-        output.write("    class # %d accuracy = %f " % (ii, acc))
+        print("    class # %d accuracy = %f " % (ii, acc))
 
+    return np.nanmean(acc_total), np.nanmean(iu)
 
 
 def get_deconv_filter(f_shape):
@@ -198,3 +191,65 @@ def conv_layer_with_bn(inputT, shape, train_phase, activation=True, name=None):
         else:
             conv_out = batch_norm_layer(bias, train_phase, scope.name)
     return conv_out
+
+
+encode_dict = {
+    0: 0,
+    8388608: 1,
+    32768: 2,
+    8421376: 3,
+    128: 4,
+    8388736: 5,
+    32896: 6,
+    8421504: 7,
+    4194304: 8,
+    12582912: 9,
+    4227072: 10,
+    12615680: 11,
+    4194432: 12,
+    12583040: 13,
+    4227200: 14,
+    12615808: 15,
+    16384: 16,
+    8404992: 17,
+    49152: 18,
+    8437760: 19,
+    16512: 20,
+}
+
+color_dict = {
+    0:[0, 0, 0], 
+    1:[128, 0, 0], 
+    2:[0, 128, 0], 
+    3:[128, 128, 0], 
+    4:[0, 0, 128], 
+    5:[128, 0, 128],
+    6:[0, 128, 128], 
+    7:[128, 128, 128], 
+    8:[64, 0, 0], 
+    9:[192, 0, 0], 
+    10:[64, 128, 0],
+    11:[192, 128, 0], 
+    12:[64, 0, 128], 
+    13:[192, 0, 128], 
+    14:[64, 128, 128], 
+    15:[192, 128, 128],
+    16:[0, 64, 0], 
+    17:[128, 64, 0], 
+    18:[0, 192, 0], 
+    19:[128, 192, 0], 
+    20:[0, 64, 128]
+}
+
+
+def rgb2int(rgb):
+    r, g, b = rgb
+    return (r << 16) + (g << 8) + b
+
+
+def encode(rgb):
+    return encode_dict[rgb2int(rgb)]
+
+
+def decode(c):
+    return color_dict[c]

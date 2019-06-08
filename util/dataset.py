@@ -1,6 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import skimage.io
+import cv2
+
+from util.utils import encode, decode
 
 
 class Dataset():
@@ -25,12 +28,11 @@ class Dataset():
         imageValue = tf.read_file(image_filename)
         labelValue = tf.read_file(label_filename)
 
-        image_bytes = tf.image.decode_png(imageValue)
+        image_bytes = tf.image.decode_jpeg(imageValue)
         label_bytes = tf.image.decode_png(labelValue)
 
-        image = tf.reshape(image_bytes, (self.image_h, self.image_w, self.image_c))
-        image = tf.cast(image, tf.float32)
-        label = tf.reshape(label_bytes, (self.image_h, self.image_w, 1))
+        image = tf.cast(image_bytes, tf.float32)
+        label = tf.cast(label_bytes, tf.int32)
 
         return image, label
 
@@ -41,8 +43,8 @@ class Dataset():
         """
         image_filenames, label_filenames = self.get_filename_list(path)
         dataset = tf.data.Dataset.from_tensor_slices((image_filenames, label_filenames))
-        batch = dataset.map(self._read_image_label).batch(batch_size).repeat()
-        shuffle_batch = batch.shuffle(int(0.4 * len(image_filenames)))
+        batch = dataset.map(self._read_image_label).batch(batch_size, drop_remainder=True).repeat()
+        shuffle_batch = batch.shuffle(len(image_filenames))
         return shuffle_batch.make_one_shot_iterator().get_next()
 
     def get_all_test_data(self, im_list, la_list):
