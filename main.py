@@ -11,7 +11,7 @@ tf.app.flags.DEFINE_string('gpu', '-1', """ which gpu device """)
 
 # path setting
 tf.app.flags.DEFINE_string('note', '0', """ note of the experiment """)
-tf.app.flags.DEFINE_bool('save_image', "False", """ whether to save predicted image """)
+tf.app.flags.DEFINE_string('save_image', "../logs/segmentation/", """ whether to save predicted image """)
 
 # experiment setting
 tf.app.flags.DEFINE_string('loss', 'dice', """ normal/weighted/dice """)

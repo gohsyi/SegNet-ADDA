@@ -73,11 +73,41 @@ def _variable_with_weight_decay(name, shape, initializer, wd):
 
 
 def fast_hist(a, b, n):
+    """
+    computer confusion matrix
+    
+    Parameters
+    ----------
+    a: vector of length image_h x image_w
+        ground truth label vector
+    b: vector of length image_h x image_w
+        prediction vector
+    
+    Returns
+    -------
+    Confusion matrix
+    """
+    
     k = (a >= 0) & (a < n)
     return np.bincount(n * a[k].astype(int) + b[k], minlength=n**2).reshape(n, n)
 
 
 def get_hist(predictions, labels):
+    """
+    get histogram
+    
+    Parameters
+    ----------
+    predictions: array of size (batch_size, image_h, image_w, num_classes)
+        predictions made by our model
+    labels: array of size (batch_size, image_h, image_w, 1)
+        ground truth labels
+    
+    Returns
+    -------
+    Confusion matrix of this batch
+    """
+    
     num_class = predictions.shape[3]
     batch_size = predictions.shape[0]
     hist = np.zeros((num_class, num_class))
@@ -95,7 +125,7 @@ def print_hist_summery(hist):
         else:
             acc = np.diag(hist)[ii] / float(hist.sum(1)[ii])
         print("    class # %d accuracy = %f " % (ii, acc))
-    return np.nanmean(acc_total), np.nanmean(iu)
+    return np.nanmean(acc_total), np.nanmean(iu)  # use nanmean to ignore classes that didn't appear
 
 
 def per_class_acc(output, predictions, label_tensor):
@@ -238,7 +268,9 @@ color_dict = {
     17:[128, 64, 0], 
     18:[0, 192, 0], 
     19:[128, 192, 0], 
-    20:[0, 64, 128]
+    20:[0, 64, 128],
+    
+    14737600: 21,  # edge
 }
 
 

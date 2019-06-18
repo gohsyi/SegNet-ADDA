@@ -30,8 +30,8 @@ class SegNet():
         self.max_steps = args.max_steps
         self.batch_size = args.batch_size
         self.log_dir = os.path.join('../logs', args.note)
-        self.image_path = '../train.txt'
-        self.test_path = '../test.txt'
+        self.image_path = '../data/train.txt'
+        self.test_path = '../data/test.txt'
         self.finetune_ckpt = args.finetune
         self.test_ckpt = args.test
         self.loss_func = args.loss
@@ -210,10 +210,6 @@ class SegNet():
                     save_path = self.save_image + path.split('/')[-1].split('.')[0] + '.bmp'
                     print('saving to ' + save_path)
 
-                    image = im[0]
-                    image[image == 0] = 0
-                    image[image == 1] = 128
-                    image[image == 2] = 255
                     image = Image.fromarray(np.uint8(im[0]))
                     image.save(save_path)
 
