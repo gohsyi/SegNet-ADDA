@@ -11,8 +11,9 @@ Run `python main.py` with the following arguments:
 ```
 -learning_rate: set the learning rate
 -batch_size: size of batch
+-loss: loss function, dice/normal(cross entropy)
 -max_steps: max training steps
 -test: if test an existing modek.ckpt
 -save_image: save testing result images to this folder
+-finetune: set restore path
 ```
-
